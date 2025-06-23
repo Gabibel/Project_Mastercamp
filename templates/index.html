@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Accueil - SmartTrash Monitor{% endblock %}
+
+{% block content %}
+<!-- Section Hero -->
+<section class="hero-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h1 class="display-4 fw-bold mb-4">
+                    <i class="fas fa-recycle me-3"></i>
+                    SmartTrash Monitor
+                </h1>
+                <p class="lead mb-4">
+                    Plateforme intelligente de suivi des poubelles pour la prévention des dépôts sauvages. 
+                    Collectez, analysez et gérez les images de poubelles en temps réel.
+                </p>
+                <div class="d-flex gap-3">
+                    <a href="{{ url_for('upload') }}" class="btn btn-light btn-lg">
+                        <i class="fas fa-upload me-2"></i>Uploader une image
+                    </a>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-chart-bar me-2"></i>Voir le dashboard
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-4 text-center">
+                <i class="fas fa-recycle" style="font-size: 8rem; opacity: 0.3;"></i>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Statistiques -->
+<section class="py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">Statistiques en temps réel</h2>
+        
+        <div class="row g-4">
+            <div class="col-md-3">
+                <div class="card stat-card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-images fa-3x text-primary mb-3"></i>
+                        <h3 class="card-title">{{ total_images }}</h3>
+                        <p class="card-text">Images totales</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card stat-card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                        <h3 class="card-title">{{ full_images }}</h3>
+                        <p class="card-text">Poubelles pleines</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card stat-card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                        <h3 class="card-title">{{ empty_images }}</h3>
+                        <p class="card-text">Poubelles vides</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card stat-card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-clock fa-3x text-warning mb-3"></i>
+                        <h3 class="card-title">{{ pending_images }}</h3>
+                        <p class="card-text">En attente</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Fonctionnalités -->
+<section class="py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">Fonctionnalités principales</h2>
+        
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-upload fa-3x text-primary mb-3"></i>
+                        <h4 class="card-title">Upload d'images</h4>
+                        <p class="card-text">
+                            Téléchargez facilement des images de poubelles avec vérification automatique du format 
+                            et analyse immédiate des caractéristiques.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-brain fa-3x text-success mb-3"></i>
+                        <h4 class="card-title">Analyse automatique</h4>
+                        <p class="card-text">
+                            Détection automatique de l'état des poubelles basée sur l'analyse des couleurs, 
+                            contrastes et luminosité des images.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-chart-line fa-3x text-info mb-3"></i>
+                        <h4 class="card-title">Dashboard interactif</h4>
+                        <p class="card-text">
+                            Visualisez les statistiques en temps réel, les tendances et les zones à risque 
+                            avec des graphiques interactifs et des cartes dynamiques.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Éco-conception -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h2>Éco-conception & Green IT</h2>
+                <p class="lead">
+                    Notre plateforme est conçue avec une approche éco-responsable pour minimiser 
+                    l'impact environnemental tout en maximisant l'efficacité.
+                </p>
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="fas fa-leaf text-success me-2"></i>
+                        Optimisation des algorithmes pour réduire la consommation énergétique
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-leaf text-success me-2"></i>
+                        Stockage local pour minimiser les transferts de données
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-leaf text-success me-2"></i>
+                        Interface utilisateur économe en ressources
+                    </li>
+                </ul>
+            </div>
+            <div class="col-lg-6 text-center">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <i class="fas fa-leaf fa-5x mb-3"></i>
+                        <h4>Impact environnemental positif</h4>
+                        <p class="mb-0">
+                            Contribuez à la réduction des dépôts sauvages et à l'amélioration 
+                            de la gestion des déchets dans votre communauté.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %} 

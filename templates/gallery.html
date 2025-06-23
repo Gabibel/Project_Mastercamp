@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}Galerie - SmartTrash Monitor{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="fas fa-images me-2"></i>
+                    Galerie d'images
+                </h2>
+                <a href="{{ url_for('upload') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Ajouter une image
+                </a>
+            </div>
+        </div>
+    </div>
+    <!-- Filtres -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="mb-0">Filtrer par statut :</h5>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('gallery', status='all') }}" class="btn btn-outline-primary {{ 'active' if status_filter == 'all' else '' }}">
+                                    <i class="fas fa-list me-1"></i>Toutes
+                                </a>
+                                <a href="{{ url_for('gallery', status='full') }}" class="btn btn-outline-danger {{ 'active' if status_filter == 'full' else '' }}">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>Pleines
+                                </a>
+                                <a href="{{ url_for('gallery', status='empty') }}" class="btn btn-outline-success {{ 'active' if status_filter == 'empty' else '' }}">
+                                    <i class="fas fa-check-circle me-1"></i>Vides
+                                </a>
+                                <a href="{{ url_for('gallery', status='pending') }}" class="btn btn-outline-warning {{ 'active' if status_filter == 'pending' else '' }}">
+                                    <i class="fas fa-clock me-1"></i>En attente
+                                </a>
+                                <a href="{{ url_for('gallery', status='unknown') }}" class="btn btn-outline-secondary {{ 'active' if status_filter == 'unknown' else '' }}">
+                                    <i class="fas fa-question-circle me-1"></i>Incertaines
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Grille d'images -->
+    {% if images.items %}
+        <div class="row g-4">
+            {% for image in images.items %}
+            <div class="col-lg-4 col-md-6">
+                <div class="card h-100 image-card" id="image-card-{{ image.id }}">
+                    <div class="position-relative">
+                        <img src="{{ url_for('uploaded_file', filename=image.filename) }}" class="card-img-top gallery-img-thumb" alt="Image de poubelle" style="height: 200px; object-fit: cover; cursor:pointer;" data-image-index="{{ loop.index0 }}">
+                        <div class="position-absolute top-0 end-0 m-2">
+                            {% if image.status == 'full' %}
+                                <span class="badge bg-danger"><i class="fas fa-exclamation-triangle me-1"></i>Pleine</span>
+                            {% elif image.status == 'empty' %}
+                                <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Vide</span>
+                            {% elif image.ai_prediction == 'unknown' %}
+                                <span class="badge bg-secondary"><i class="fas fa-question-circle me-1"></i>Incertaine</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>En attente</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="card-title">{{ image.original_filename[:30] }}{% if image.original_filename|length > 30 %}...{% endif %}</h6>
+                        <p class="card-text text-muted small"><i class="fas fa-calendar me-1"></i>{{ image.upload_date.strftime('%d/%m/%Y %H:%M') }}</p>
+                        
+                        <!-- Prédiction IA -->
+                        {% if image.ai_prediction %}
+                        <div class="ai-prediction mb-3">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-robot text-info me-2"></i>
+                                <strong class="text-info">Prédiction IA</strong>
+                            </div>
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    {% if image.ai_prediction == 'unknown' %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-question-circle me-1"></i>Incertaine
+                                        </span>
+                                    {% else %}
+                                        <span class="badge {% if image.ai_prediction == 'full' %}bg-danger{% else %}bg-success{% endif %}">
+                                            <i class="fas {% if image.ai_prediction == 'full' %}fa-exclamation-triangle{% else %}fa-check-circle{% endif %} me-1"></i>
+                                            {{ image.ai_prediction|title }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">
+                                        <i class="fas fa-chart-line me-1"></i><br>
+                                        <span class="fw-bold">{{ "%.0f"|format(image.ai_confidence * 100) }}%</span><br>
+                                        <span class="small">Confiance</span>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Métadonnées techniques -->
+                        <div class="row text-center">
+                            <div class="col-4"><small class="text-muted"><i class="fas fa-expand-arrows-alt me-1"></i><br>{{ image.width }}×{{ image.height }}</small></div>
+                            <div class="col-4"><small class="text-muted"><i class="fas fa-weight-hanging me-1"></i><br>{{ (image.file_size / 1024)|round(1) }} KB</small></div>
+                            <div class="col-4"><small class="text-muted"><i class="fas fa-lightbulb me-1"></i><br>{{ image.brightness|round(0) }}</small></div>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <!-- Bouton de suppression pour toutes les images -->
+                                <form method="POST" action="{{ url_for('delete_image', image_id=image.id) }}" style="display:inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette image ?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-trash me-1"></i>Supprimer
+                                    </button>
+                                </form>
+                                <!-- Boutons d'annotation rapide uniquement si en attente -->
+                                {% if image.status == 'pending' %}
+                                <div class="btn-group btn-group-sm annotation-group ms-2" role="group" data-image-id="{{ image.id }}">
+                                    <form method="POST" action="{{ url_for('validate_prediction', image_id=image.id) }}" style="display:inline;">
+                                        <input type="hidden" name="status" value="full">
+                                        <button type="submit" class="btn btn-outline-danger annotate-btn" data-action="full">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>Pleine
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('validate_prediction', image_id=image.id) }}" style="display:inline;">
+                                        <input type="hidden" name="status" value="empty">
+                                        <button type="submit" class="btn btn-outline-success annotate-btn" data-action="empty">
+                                            <i class="fas fa-check-circle me-1"></i>Vide
+                                        </button>
+                                    </form>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <!-- Indicateur de validation IA -->
+                            {% if image.ai_validated %}
+                                {% if image.ai_correct %}
+                                    <small class="text-success"><i class="fas fa-check-circle me-1"></i>IA correcte</small>
+                                {% else %}
+                                    <small class="text-danger"><i class="fas fa-times-circle me-1"></i>IA incorrecte</small>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% if images.pages > 1 %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <nav aria-label="Navigation des pages">
+                    <ul class="pagination justify-content-center">
+                        {% if images.has_prev %}
+                            <li class="page-item"><a class="page-link" href="{{ url_for('gallery', page=images.prev_num, status=status_filter) }}"><i class="fas fa-chevron-left"></i></a></li>
+                        {% endif %}
+                        {% for page_num in images.iter_pages() %}
+                            {% if page_num %}
+                                {% if page_num != images.page %}
+                                    <li class="page-item"><a class="page-link" href="{{ url_for('gallery', page=page_num, status=status_filter) }}">{{ page_num }}</a></li>
+                                {% else %}
+                                    <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                                {% endif %}
+                            {% else %}
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            {% endif %}
+                        {% endfor %}
+                        {% if images.has_next %}
+                            <li class="page-item"><a class="page-link" href="{{ url_for('gallery', page=images.next_num, status=status_filter) }}"><i class="fas fa-chevron-right"></i></a></li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+        </div>
+        {% endif %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card"><div class="card-body text-center"><p class="mb-0">Affichage de {{ images.items|length }} image(s) sur {{ images.total }} total{% if status_filter != 'all' %} (filtré par statut: {{ status_filter }}){% endif %}</p></div></div>
+            </div>
+        </div>
+    {% else %}
+        <div class="row"><div class="col-12"><div class="card"><div class="card-body text-center py-5"><i class="fas fa-images fa-4x text-muted mb-3"></i><h4>Aucune image trouvée</h4><p class="text-muted">{% if status_filter != 'all' %}Aucune image avec le statut "{{ status_filter }}" n'a été trouvée.{% else %}Aucune image n'a été uploadée pour le moment.{% endif %}</p><a href="{{ url_for('upload') }}" class="btn btn-primary"><i class="fas fa-upload me-2"></i>Uploader la première image</a></div></div></div></div>
+    {% endif %}
+</div>
+
+<!-- Modal annotation -->
+<div class="modal fade" id="annotateModal" tabindex="-1" aria-labelledby="annotateModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="annotateModalLabel">Annotation de l'image</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body text-center">
+        <img id="modalImage" src="" alt="Image annoter" class="img-fluid mb-3" style="max-height:400px;">
+        <div id="modalMeta" class="mb-3"></div>
+        <div id="modalAnnotationBtns"></div>
+        <div class="mt-2 text-muted small">Raccourcis clavier : <b>F</b> = Pleine, <b>E</b> = Vide, <b>←</b>/<b>→</b> = Naviguer</div>
+      </div>
+      <div class="modal-footer justify-content-between">
+        <button type="button" class="btn btn-outline-secondary" id="modalPrevBtn"><i class="fas fa-arrow-left"></i> Précédent</button>
+        <button type="button" class="btn btn-outline-secondary" id="modalNextBtn">Suivant <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Préparer les données images côté JS
+const imagesData = [
+    {% for image in images.items %}
+    {
+        id: {{ image.id }},
+        filename: "{{ url_for('uploaded_file', filename=image.filename) }}",
+        status: "{{ image.status }}",
+        original_filename: "{{ image.original_filename|escape }}",
+        width: {{ image.width }},
+        height: {{ image.height }},
+        file_size: {{ image.file_size }},
+        brightness: {{ image.brightness|default(0) }},
+        ai_prediction: "{{ image.ai_prediction|default('') }}",
+        ai_confidence: {{ image.ai_confidence|default(0) }},
+        upload_date: "{{ image.upload_date.strftime('%d/%m/%Y %H:%M') }}"
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+let currentIdx = 0;
+
+function showAnnotateModal(idx) {
+    currentIdx = idx;
+    const img = imagesData[idx];
+    document.getElementById('modalImage').src = img.filename;
+    document.getElementById('annotateModalLabel').textContent = img.original_filename;
+    document.getElementById('modalMeta').innerHTML =
+        `<b>Dimensions :</b> ${img.width}×${img.height} px | <b>Taille :</b> ${(img.file_size/1024).toFixed(1)} KB | <b>Luminosité :</b> ${Math.round(img.brightness)}<br>` +
+        `<b>Date upload :</b> ${img.upload_date}`;
+    // Boutons annotation si en attente
+    let btns = '';
+    if(img.status === 'pending') {
+        btns += `<form method="POST" action="/validate/${img.id}" style="display:inline;">
+            <input type="hidden" name="status" value="full">
+            <button type="submit" class="btn btn-outline-danger annotate-btn-modal me-2" data-action="full"><i class="fas fa-exclamation-triangle me-1"></i>Pleine (F)</button>
+        </form>`;
+        btns += `<form method="POST" action="/validate/${img.id}" style="display:inline;">
+            <input type="hidden" name="status" value="empty">
+            <button type="submit" class="btn btn-outline-success annotate-btn-modal" data-action="empty"><i class="fas fa-check-circle me-1"></i>Vide (E)</button>
+        </form>`;
+    } else {
+        btns = `<span class="text-muted">Image déjà annotée</span>`;
+    }
+    document.getElementById('modalAnnotationBtns').innerHTML = btns;
+    // Navigation
+    document.getElementById('modalPrevBtn').style.visibility = (idx > 0) ? 'visible' : 'hidden';
+    document.getElementById('modalNextBtn').style.visibility = (idx < imagesData.length-1) ? 'visible' : 'hidden';
+    var modal = new bootstrap.Modal(document.getElementById('annotateModal'));
+    modal.show();
+}
+
+document.querySelectorAll('.gallery-img-thumb').forEach((img, idx) => {
+    img.addEventListener('click', function() {
+        showAnnotateModal(idx);
+    });
+});
+
+document.getElementById('modalPrevBtn').addEventListener('click', function() {
+    if(currentIdx > 0) showAnnotateModal(currentIdx-1);
+});
+document.getElementById('modalNextBtn').addEventListener('click', function() {
+    if(currentIdx < imagesData.length-1) showAnnotateModal(currentIdx+1);
+});
+
+document.getElementById('annotateModal').addEventListener('shown.bs.modal', function() {
+    document.addEventListener('keydown', modalKeyHandler);
+});
+document.getElementById('annotateModal').addEventListener('hidden.bs.modal', function() {
+    document.removeEventListener('keydown', modalKeyHandler);
+});
+
+function modalKeyHandler(e) {
+    if(e.key === 'f' || e.key === 'F') {
+        let btn = document.querySelector('.annotate-btn-modal[data-action="full"]');
+        if(btn) btn.click();
+    } else if(e.key === 'e' || e.key === 'E') {
+        let btn = document.querySelector('.annotate-btn-modal[data-action="empty"]');
+        if(btn) btn.click();
+    } else if(e.key === 'ArrowRight') {
+        if(currentIdx < imagesData.length-1) showAnnotateModal(currentIdx+1);
+    } else if(e.key === 'ArrowLeft') {
+        if(currentIdx > 0) showAnnotateModal(currentIdx-1);
+    }
+}
+</script>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<style>
+.image-card {transition: transform 0.2s ease, box-shadow 0.2s ease;}
+.image-card:hover {transform: translateY(-5px);box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);}
+.card-img-top {transition: transform 0.2s ease;}
+.image-card:hover .card-img-top {transform: scale(1.05);}
+.pagination .page-link {color: #2c5530;border-color: #dee2e6;}
+.pagination .page-item.active .page-link {background-color: #2c5530;border-color: #2c5530;}
+.pagination .page-link:hover {background-color: #e8f5e8;border-color: #2c5530;}
+.ai-prediction {border-top: 1px solid #dee2e6;padding-top: 10px;}
+.btn-group .btn {border-radius: 0;}
+.btn-group .btn:first-child {border-top-left-radius: 0.375rem;border-bottom-left-radius: 0.375rem;}
+.btn-group .btn:last-child {border-top-right-radius: 0.375rem;border-bottom-right-radius: 0.375rem;}
+</style>
+{% endblock %} 

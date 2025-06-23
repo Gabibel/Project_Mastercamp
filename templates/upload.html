@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Upload d'images - SmartTrash Monitor{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-upload me-2"></i>
+                        Upload d'images de poubelles
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        <div class="mb-4">
+                            <label for="file" class="form-label">Sélectionner une ou plusieurs images :</label>
+                            <input type="file" class="form-control" id="file" name="file" accept="image/*" multiple required>
+                            <div class="form-text">Formats acceptés : PNG, JPG, JPEG, GIF, BMP (max 16MB par image)</div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-upload me-2"></i>Uploader les images
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Instructions -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Instructions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Formats acceptés :</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>PNG</li>
+                                <li><i class="fas fa-check text-success me-2"></i>JPG / JPEG</li>
+                                <li><i class="fas fa-check text-success me-2"></i>GIF</li>
+                                <li><i class="fas fa-check text-success me-2"></i>BMP</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Conseils pour une meilleure analyse :</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-lightbulb text-warning me-2"></i>Bonne luminosité</li>
+                                <li><i class="fas fa-lightbulb text-warning me-2"></i>Poubelle bien visible</li>
+                                <li><i class="fas fa-lightbulb text-warning me-2"></i>Angle de vue clair</li>
+                                <li><i class="fas fa-lightbulb text-warning me-2"></i>Résolution suffisante</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

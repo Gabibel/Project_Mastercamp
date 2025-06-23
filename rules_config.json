@@ -1,0 +1,12 @@
+{
+  "brightness_full_max": 110.0,
+  "brightness_empty_min": 150.0,
+  "contrast_full_max": 30.0,
+  "contrast_empty_min": 50.0,
+  "color_variance_full_max": 700.0,
+  "color_variance_empty_min": 1300.0,
+  "edge_density_full_max": 0.13,
+  "edge_density_empty_min": 0.22,
+  "dark_pixel_ratio_full_min": 0.35,
+  "dark_pixel_ratio_empty_max": 0.12
+}

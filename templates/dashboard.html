@@ -1,0 +1,437 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - SmartTrash Monitor{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="fas fa-chart-line me-2"></i>
+                Dashboard
+            </h2>
+        </div>
+    </div>
+    <!-- Filtres -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <label>Filtrer par état :</label>
+            <select id="statusFilter" class="form-select">
+                <option value="all">Tous</option>
+                <option value="full">Pleine</option>
+                <option value="empty">Vide</option>
+                <option value="pending">En attente</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label>Date :</label>
+            <input type="date" id="dateFilter" class="form-control">
+        </div>
+    </div>
+    <!-- Statistiques générales -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-images fa-3x text-primary mb-3"></i>
+                    <h3 class="card-title">{{ total_images }}</h3>
+                    <p class="card-text">Images totales</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                    <h3 class="card-title">{{ full_images }}</h3>
+                    <p class="card-text">Poubelles pleines</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                    <h3 class="card-title">{{ empty_images }}</h3>
+                    <p class="card-text">Poubelles vides</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-database fa-3x text-info mb-3"></i>
+                    <h3 class="card-title">{{ empty_training + full_training }}</h3>
+                    <p class="card-text">Images d'entraînement</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Statistiques de performance IA -->
+    <div class="row g-4 mb-5">
+        <div class="col-12">
+            <h4 class="mb-3">
+                <i class="fas fa-robot me-2"></i>
+                Performance de l'Algorithme IA
+            </h4>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-percentage fa-3x text-success mb-3"></i>
+                    <h3 class="card-title">{{ "%.1f"|format(ai_accuracy) }}%</h3>
+                    <p class="card-text">Précision globale</p>
+                    <small class="text-muted">{{ total_validated }} images validées</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-check-double fa-3x text-success mb-3"></i>
+                    <h3 class="card-title">{{ ai_correct }}</h3>
+                    <p class="card-text">Prédictions correctes</p>
+                    <small class="text-muted">IA a raison</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-times-circle fa-3x text-danger mb-3"></i>
+                    <h3 class="card-title">{{ ai_incorrect }}</h3>
+                    <p class="card-text">Prédictions incorrectes</p>
+                    <small class="text-muted">IA a tort</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-question-circle fa-3x text-warning mb-3"></i>
+                    <h3 class="card-title">{{ ai_pred_unknown }}</h3>
+                    <p class="card-text">Prédictions incertaines</p>
+                    <small class="text-muted">Confiance faible</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Détail par classe -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Précision sur les poubelles pleines
+                    </h5>
+                </div>
+                <div class="card-body text-center">
+                    <h2 class="text-danger">{{ "%.1f"|format(full_accuracy) }}%</h2>
+                    <p class="mb-2">{{ full_validated_count }} images validées</p>
+                    <div class="progress mb-2">
+                        <div class="progress-bar bg-danger" style="width: {{ full_accuracy }}%"></div>
+                    </div>
+                    <small class="text-muted">Taux de détection des poubelles pleines</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Précision sur les poubelles vides
+                    </h5>
+                </div>
+                <div class="card-body text-center">
+                    <h2 class="text-success">{{ "%.1f"|format(empty_accuracy) }}%</h2>
+                    <p class="mb-2">{{ empty_validated_count }} images validées</p>
+                    <div class="progress mb-2">
+                        <div class="progress-bar bg-success" style="width: {{ empty_accuracy }}%"></div>
+                    </div>
+                    <small class="text-muted">Taux de détection des poubelles vides</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Répartition des prédictions IA -->
+    <div class="row mb-5">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Répartition des prédictions IA</h5>
+                    <canvas id="aiPredictionsChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Performance IA vs Validation humaine</h5>
+                    <canvas id="aiPerformanceChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Graphiques dynamiques -->
+    <div class="row mb-5">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Répartition des statuts</h5>
+                    <canvas id="statusChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Luminosité moyenne par date</h5>
+                    <canvas id="brightnessChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Actions rapides -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt me-2"></i>
+                        Actions rapides
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <a href="{{ url_for('upload') }}" class="btn btn-primary w-100 mb-2">
+                                <i class="fas fa-upload me-2"></i>Uploader une image
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{{ url_for('gallery') }}" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="fas fa-images me-2"></i>Voir la galerie
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{{ url_for('gallery', status='pending') }}" class="btn btn-outline-warning w-100 mb-2">
+                                <i class="fas fa-clock me-2"></i>Images en attente
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mb-5">
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Histogramme de la luminosité (statique)</h5>
+                    <img src="{{ url_for('static_graph_luminosity') }}" class="img-fluid" alt="Histogramme luminosité">
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Histogramme du contraste (statique)</h5>
+                    <img src="{{ url_for('static_graph_contrast') }}" class="img-fluid" alt="Histogramme contraste">
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Répartition des statuts (statique)</h5>
+                    <img src="{{ url_for('static_graph_status') }}" class="img-fluid" alt="Camembert statuts">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let allData = [];
+let statusChartObj = null;
+let brightnessChartObj = null;
+let aiPredictionsChartObj = null;
+let aiPerformanceChartObj = null;
+
+// Données IA passées depuis le backend
+const aiData = {
+    predFull: {{ ai_pred_full }},
+    predEmpty: {{ ai_pred_empty }},
+    predUnknown: {{ ai_pred_unknown }},
+    correct: {{ ai_correct }},
+    incorrect: {{ ai_incorrect }},
+    totalValidated: {{ total_validated }}
+};
+
+function initAICharts() {
+    // Graphique répartition des prédictions IA
+    const ctx1 = document.getElementById('aiPredictionsChart').getContext('2d');
+    aiPredictionsChartObj = new Chart(ctx1, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pleine', 'Vide', 'Incertaine'],
+            datasets: [{
+                data: [aiData.predFull, aiData.predEmpty, aiData.predUnknown],
+                backgroundColor: ['#e74c3c', '#2ecc71', '#f1c40f'],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+    
+    // Graphique performance IA vs validation humaine
+    const ctx2 = document.getElementById('aiPerformanceChart').getContext('2d');
+    aiPerformanceChartObj = new Chart(ctx2, {
+        type: 'bar',
+        data: {
+            labels: ['Correctes', 'Incorrectes'],
+            datasets: [{
+                label: 'Prédictions IA',
+                data: [aiData.correct, aiData.incorrect],
+                backgroundColor: ['#27ae60', '#e74c3c'],
+                borderWidth: 1,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Nombre d\'images'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+}
+
+function updateCharts(data) {
+    // Statuts
+    const statusCounts = {full: 0, empty: 0, pending: 0};
+    data.forEach(img => {
+        if (statusCounts[img.status] !== undefined) statusCounts[img.status]++;
+    });
+    // Chart.js - Statut
+    const ctx1 = document.getElementById('statusChart').getContext('2d');
+    if(statusChartObj) statusChartObj.destroy();
+    statusChartObj = new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: ['Pleine', 'Vide', 'En attente'],
+            datasets: [{
+                label: 'Nombre',
+                data: [statusCounts.full, statusCounts.empty, statusCounts.pending],
+                backgroundColor: ['#e74c3c', '#2ecc71', '#f1c40f']
+            }]
+        },
+        options: {responsive: true}
+    });
+    // Luminosité par date
+    const dateMap = {};
+    data.forEach(img => {
+        if(!dateMap[img.date]) dateMap[img.date] = [];
+        if(img.brightness !== null) dateMap[img.date].push(img.brightness);
+    });
+    const dates = Object.keys(dateMap).sort();
+    const avgBrightness = dates.map(date => {
+        const arr = dateMap[date];
+        if(arr.length === 0) return null;
+        return arr.reduce((a,b) => a+b, 0) / arr.length;
+    });
+    const ctx2 = document.getElementById('brightnessChart').getContext('2d');
+    if(brightnessChartObj) brightnessChartObj.destroy();
+    brightnessChartObj = new Chart(ctx2, {
+        type: 'line',
+        data: {
+            labels: dates,
+            datasets: [{
+                label: 'Luminosité moyenne',
+                data: avgBrightness,
+                borderColor: '#3498db',
+                fill: false
+            }]
+        },
+        options: {responsive: true}
+    });
+}
+
+function applyFilters() {
+    let status = document.getElementById('statusFilter').value;
+    let date = document.getElementById('dateFilter').value;
+    let filtered = allData.filter(img => {
+        let ok = true;
+        if(status !== 'all') ok = ok && img.status === status;
+        if(date) ok = ok && img.date === date;
+        return ok;
+    });
+    updateCharts(filtered);
+}
+
+// Initialiser les graphiques IA au chargement
+document.addEventListener('DOMContentLoaded', function() {
+    initAICharts();
+});
+
+fetch('/api/stats')
+    .then(resp => resp.json())
+    .then(data => {
+        allData = data;
+        updateCharts(allData);
+    });
+
+document.getElementById('statusFilter').addEventListener('change', applyFilters);
+document.getElementById('dateFilter').addEventListener('change', applyFilters);
+</script>
+
+<style>
+.stat-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.card {
+    border: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 10px 10px 0 0 !important;
+}
+</style>
+{% endblock %} 

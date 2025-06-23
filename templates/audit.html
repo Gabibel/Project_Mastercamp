@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Audit des données - SmartTrash Monitor{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h2 class="mb-4"><i class="fas fa-search me-2"></i>Audit de conformité des données</h2>
+    <div class="alert alert-info">Cette page liste toutes les images et signale les éventuelles incohérences ou anomalies détectées dans la base.</div>
+    <table class="table table-bordered table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Image</th>
+                <th>Nom</th>
+                <th>Date upload</th>
+                <th>Statut</th>
+                <th>Dimensions</th>
+                <th>Taille</th>
+                <th>Anomalies détectées</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in audit_results %}
+            <tr class="{% if entry.anomalies %}table-danger{% else %}table-success{% endif %}">
+                <td style="width:90px">
+                    {% if entry.image.filename and entry.anomalies and 'Fichier manquant' in entry.anomalies %}
+                        <span class="text-danger">(absente)</span>
+                    {% else %}
+                        <img src="{{ url_for('uploaded_file', filename=entry.image.filename) }}" alt="img" style="max-width:80px;max-height:60px;">
+                    {% endif %}
+                </td>
+                <td>{{ entry.image.original_filename }}</td>
+                <td>{{ entry.image.upload_date.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td>{{ entry.image.status }}</td>
+                <td>{{ entry.image.width }}×{{ entry.image.height }}</td>
+                <td>{{ (entry.image.file_size/1024)|round(1) }} KB</td>
+                <td>
+                    {% if entry.anomalies %}
+                        <ul class="mb-0">
+                        {% for a in entry.anomalies %}
+                            <li class="fw-bold text-danger">{{ a }}</li>
+                        {% endfor %}
+                        </ul>
+                    {% else %}
+                        <span class="text-success fw-bold">Aucune</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary mt-3"><i class="fas fa-arrow-left me-2"></i>Retour au dashboard</a>
+</div>
+{% endblock %} 
