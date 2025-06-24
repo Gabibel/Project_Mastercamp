@@ -1,9 +1,0 @@
-services:
-  - type: web
-    name: project_mastercamp
-    env: python
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "python app.py"
-    packages:
-      apt:
-        - libgl1
