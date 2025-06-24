@@ -1,18 +1,20 @@
 FROM python:3.12-slim
 
-# Installe les dépendances système nécessaires à OpenCV
+# Installer les bibliothèques nécessaires à OpenCV
 RUN apt-get update && apt-get install -y \
     libgl1 \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Crée un répertoire de travail
+# Créer le répertoire de travail
 WORKDIR /app
 
-# Copie les fichiers de ton app
+# Copier le code source dans le conteneur
 COPY . .
 
-# Installe les packages Python
-RUN pip install --upgrade pip && pip install -r requirements.txt
+# Installer les dépendances Python
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
 
-# Lance ton script Python
+# Lancer l'application
 CMD ["python", "app.py"]
