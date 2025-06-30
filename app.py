@@ -15,6 +15,12 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from io import BytesIO
 import threading
+import glob
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+import sqlite3
+from sklearn.preprocessing import StandardScaler
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'votre_cle_secrete_ici'
@@ -39,6 +45,21 @@ class TrashImage(db.Model):
     ai_validated = db.Column(db.Boolean, default=False)  # Si l'IA a été validée
     ai_correct = db.Column(db.Boolean)  # Si la prédiction IA était correcte
     
+    # Prédiction KNN
+    knn_prediction = db.Column(db.String(50))  # 'full' ou 'empty'
+    knn_confidence = db.Column(db.Float)  # Score de confiance (0-1)
+    
+    # Prédiction Random Forest
+    rf_prediction = db.Column(db.String(50))
+    rf_confidence = db.Column(db.Float)
+    
+    # Prédiction SVM
+    svm_prediction = db.Column(db.String(50))
+    svm_confidence = db.Column(db.Float)
+    
+    # Vote final ML
+    ml_vote = db.Column(db.String(50))
+    
     # Métadonnées d'analyse avancée
     file_size = db.Column(db.Integer)
     width = db.Column(db.Integer)
@@ -60,6 +81,9 @@ class TrashImage(db.Model):
     latitude = db.Column(db.Float, default=48.8566)
     longitude = db.Column(db.Float, default=2.3522)
     location_name = db.Column(db.String(255), default='Paris')
+    
+    # Ajout du champ ml_correct dans TrashImage
+    ml_correct = db.Column(db.Boolean)  # Si le vote ML était correct
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -173,10 +197,74 @@ def async_analyze_and_update(trash_image_id, filepath):
         analysis = analyze_image_advanced(filepath)
         if analysis:
             rule_prediction, rule_confidence = predict_with_advanced_ai(analysis)
+            # Prédiction KNN
+            knn_pred = None
+            knn_conf = None
+            rf_pred = None
+            rf_conf = None
+            svm_pred = None
+            svm_conf = None
+            feats = [
+                analysis['brightness'],
+                analysis['contrast'],
+                analysis['color_variance'],
+                analysis['edge_density'],
+                analysis['texture_complexity'],
+                analysis['dark_pixel_ratio'],
+                analysis['color_entropy']
+            ]
+            try:
+                import pickle
+                import numpy as np
+                # Charger le scaler
+                scaler = None
+                if os.path.exists('scaler_ml.pkl'):
+                    with open('scaler_ml.pkl', 'rb') as f:
+                        scaler = pickle.load(f)
+                feats_scaled = scaler.transform([feats]) if scaler else [feats]
+                # KNN
+                if os.path.exists(KNN_MODEL_FILE):
+                    with open(KNN_MODEL_FILE, 'rb') as f:
+                        knn = pickle.load(f)
+                    proba = knn.predict_proba(feats_scaled)[0]
+                    pred = knn.predict(feats_scaled)[0]
+                    knn_pred = 'empty' if pred == 0 else 'full'
+                    knn_conf = float(np.max(proba))
+                # RF
+                if os.path.exists(RF_MODEL_FILE):
+                    with open(RF_MODEL_FILE, 'rb') as f:
+                        rf = pickle.load(f)
+                    proba = rf.predict_proba(feats_scaled)[0]
+                    pred = rf.predict(feats_scaled)[0]
+                    rf_pred = 'empty' if pred == 0 else 'full'
+                    rf_conf = float(np.max(proba))
+                # SVM
+                if os.path.exists(SVM_MODEL_FILE):
+                    with open(SVM_MODEL_FILE, 'rb') as f:
+                        svm = pickle.load(f)
+                    proba = svm.predict_proba(feats_scaled)[0]
+                    pred = svm.predict(feats_scaled)[0]
+                    svm_pred = 'empty' if pred == 0 else 'full'
+                    svm_conf = float(np.max(proba))
+            except Exception as e:
+                print(f"Erreur prédiction ML : {e}")
+            # Vote majoritaire
+            votes = [p for p in [knn_pred, rf_pred, svm_pred] if p in ['full', 'empty']]
+            if votes:
+                ml_vote = max(set(votes), key=votes.count)
+            else:
+                ml_vote = None
             for k, v in analysis.items():
                 setattr(img, k, v)
             img.ai_prediction = rule_prediction
             img.ai_confidence = rule_confidence
+            img.knn_prediction = knn_pred
+            img.knn_confidence = knn_conf
+            img.rf_prediction = rf_pred
+            img.rf_confidence = rf_conf
+            img.svm_prediction = svm_pred
+            img.svm_confidence = svm_conf
+            img.ml_vote = ml_vote
             img.status = 'pending'  # Laisse à pending, l'utilisateur valide ensuite
             db.session.commit()
 
@@ -218,11 +306,32 @@ def upload():
                     img.save(filepath, format="JPEG", quality=80, optimize=True)
             except Exception as e:
                 print(f"Erreur compression image : {e}")
+            # Récupérer la localisation du formulaire
+            latitude = request.form.get('latitude', type=float)
+            longitude = request.form.get('longitude', type=float)
+            location_name = request.form.get('location_name', default='Paris')
+            # Récupérer la date/heure de la photo
+            photo_datetime_str = request.form.get('photo_datetime')
+            if photo_datetime_str:
+                try:
+                    # Format attendu : 'YYYY-MM-DDTHH:MM'
+                    photo_datetime = datetime.strptime(photo_datetime_str, '%Y-%m-%dT%H:%M')
+                    # On force le fuseau UTC pour cohérence
+                    photo_datetime = photo_datetime.replace(tzinfo=timezone.utc)
+                except Exception as e:
+                    print(f"Erreur parsing date/heure : {e}")
+                    photo_datetime = datetime.now(timezone.utc)
+            else:
+                photo_datetime = datetime.now(timezone.utc)
             # Création entrée TrashImage (status pending, sans features)
             trash_image = TrashImage(
                 filename=filename,
                 original_filename=file.filename,
                 status='pending',
+                latitude=latitude if latitude else 48.8566,
+                longitude=longitude if longitude else 2.3522,
+                location_name=location_name if location_name else 'Paris',
+                upload_date=photo_datetime,
             )
             db.session.add(trash_image)
             db.session.commit()
@@ -270,12 +379,13 @@ def validate_prediction(image_id):
         # Marquer comme validé et vérifier si l'IA avait raison
         image.ai_validated = True
         image.ai_correct = (image.ai_prediction == user_status)
+        image.ml_correct = (image.ml_vote == user_status)
         db.session.commit()
 
-        if image.ai_correct:
-            flash(f'✅ Prédiction IA correcte ! ({image.ai_prediction})')
+        if image.ml_correct:
+            flash(f'✅ Vote ML correct ! ({image.ml_vote})')
         else:
-            flash(f'❌ Prédiction IA incorrecte. IA: {image.ai_prediction}, Réel: {user_status}')
+            flash(f'❌ Vote ML incorrect. Vote: {image.ml_vote}, Réel: {user_status}')
         
         return redirect(url_for('gallery'))
     else:
@@ -301,37 +411,42 @@ def delete_image(image_id):
 @app.route('/dashboard')
 def dashboard():
     total_images = TrashImage.query.count()
-    full_images = TrashImage.query.filter_by(status='full').count()
-    empty_images = TrashImage.query.filter_by(status='empty').count()
-    
+    # Utiliser le vote final ML pour les stats
+    full_images = TrashImage.query.filter_by(ml_vote='full').count()
+    empty_images = TrashImage.query.filter_by(ml_vote='empty').count()
     # Statistiques de performance de l'algorithme IA
     validated_images = TrashImage.query.filter_by(ai_validated=True).all()
-    ai_correct = sum(1 for img in validated_images if img.ai_correct)
-    ai_incorrect = sum(1 for img in validated_images if not img.ai_correct)
-    ai_accuracy = (ai_correct / len(validated_images) * 100) if validated_images else 0
-    
+    ml_correct = sum(1 for img in validated_images if img.ml_correct)
+    ml_incorrect = sum(1 for img in validated_images if img.ml_correct is False)
+    ml_accuracy = (ml_correct / len(validated_images) * 100) if validated_images else 0
     # Répartition des prédictions IA
     ai_predictions = TrashImage.query.filter(TrashImage.ai_prediction.isnot(None)).all()
     ai_pred_full = sum(1 for img in ai_predictions if img.ai_prediction == 'full')
     ai_pred_empty = sum(1 for img in ai_predictions if img.ai_prediction == 'empty')
-    ai_pred_unknown = sum(1 for img in ai_predictions if img.ai_prediction == 'unknown')
-    
-    # Statistiques par classe (pleine/vide)
-    full_validated = [img for img in validated_images if img.status == 'full']
-    empty_validated = [img for img in validated_images if img.status == 'empty']
-    
-    full_correct = sum(1 for img in full_validated if img.ai_correct)
-    empty_correct = sum(1 for img in empty_validated if img.ai_correct)
-    
+    # Incertitude basée sur le vote ML (None ou N/A)
+    ai_pred_unknown = sum(1 for img in validated_images if not img.ml_vote or img.ml_vote not in ['full', 'empty'])
+    # Statistiques par classe (pleine/vide) selon le vote ML
+    full_validated = [img for img in validated_images if img.ml_vote == 'full']
+    empty_validated = [img for img in validated_images if img.ml_vote == 'empty']
+    full_correct = sum(1 for img in full_validated if img.ml_correct)
+    empty_correct = sum(1 for img in empty_validated if img.ml_correct)
     full_accuracy = (full_correct / len(full_validated) * 100) if full_validated else 0
     empty_accuracy = (empty_correct / len(empty_validated) * 100) if empty_validated else 0
-    
+    # Comparaison des modèles (KNN, RF, SVM, règles)
+    knn_correct = sum(1 for img in validated_images if img.knn_prediction == img.manual_status)
+    rf_correct = sum(1 for img in validated_images if img.rf_prediction == img.manual_status)
+    svm_correct = sum(1 for img in validated_images if img.svm_prediction == img.manual_status)
+    rules_correct = sum(1 for img in validated_images if img.ai_prediction == img.manual_status)
+    knn_total = sum(1 for img in validated_images if img.knn_prediction in ['full', 'empty'])
+    rf_total = sum(1 for img in validated_images if img.rf_prediction in ['full', 'empty'])
+    svm_total = sum(1 for img in validated_images if img.svm_prediction in ['full', 'empty'])
+    rules_total = len(validated_images)
+    rules_indecis = sum(1 for img in validated_images if img.ai_prediction not in ['full', 'empty'])
     # Compter les images d'entraînement dans les nouveaux dossiers
     empty_training = len([f for f in os.listdir(os.path.join(app.config['TRAINING_FOLDER'], 'with_label', 'clean')) 
                          if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))])
     full_training = len([f for f in os.listdir(os.path.join(app.config['TRAINING_FOLDER'], 'with_label', 'dirty')) 
                         if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))])
-    
     return render_template('dashboard.html',
                          total_images=total_images,
                          full_images=full_images,
@@ -339,9 +454,9 @@ def dashboard():
                          empty_training=empty_training,
                          full_training=full_training,
                          # Nouvelles statistiques IA
-                         ai_correct=ai_correct,
-                         ai_incorrect=ai_incorrect,
-                         ai_accuracy=ai_accuracy,
+                         ml_correct=ml_correct,
+                         ml_incorrect=ml_incorrect,
+                         ml_accuracy=ml_accuracy,
                          total_validated=len(validated_images),
                          ai_pred_full=ai_pred_full,
                          ai_pred_empty=ai_pred_empty,
@@ -349,7 +464,11 @@ def dashboard():
                          full_accuracy=full_accuracy,
                          empty_accuracy=empty_accuracy,
                          full_validated_count=len(full_validated),
-                         empty_validated_count=len(empty_validated))
+                         empty_validated_count=len(empty_validated),
+                         knn_correct=knn_correct, knn_total=knn_total,
+                         rf_correct=rf_correct, rf_total=rf_total,
+                         svm_correct=svm_correct, svm_total=svm_total,
+                         rules_correct=rules_correct, rules_total=rules_total, rules_indecis=rules_indecis)
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
@@ -401,13 +520,13 @@ def static_graph_status():
     images = TrashImage.query.all()
     status_labels = ['pleine', 'vide', 'en attente']
     status_counts = [
-        sum(1 for img in images if img.status == 'full'),
-        sum(1 for img in images if img.status == 'empty'),
-        sum(1 for img in images if img.status == 'pending')
+        sum(1 for img in images if img.ml_vote == 'full'),
+        sum(1 for img in images if img.ml_vote == 'empty'),
+        sum(1 for img in images if img.ml_vote not in ['full', 'empty'])
     ]
     plt.figure(figsize=(5,5))
     plt.pie(status_counts, labels=status_labels, autopct='%1.1f%%', colors=['#e74c3c','#2ecc71','#f1c40f'])
-    plt.title('Répartition des statuts')
+    plt.title('Répartition des statuts (vote ML)')
     buf = BytesIO()
     plt.savefig(buf, format='png')
     buf.seek(0)
@@ -643,7 +762,157 @@ def audit():
             "image": img,
             "anomalies": anomalies
         })
-    return render_template('audit.html', audit_results=audit_results)
+    # Audit rapide des features : moyenne et écart-type par classe
+    features = ["brightness", "contrast", "color_variance", "edge_density", "texture_complexity", "dark_pixel_ratio", "color_entropy"]
+    stats = {}
+    for classe in ["full", "empty"]:
+        classe_imgs = [img for img in images if img.status == classe]
+        stats[classe] = {}
+        for feat in features:
+            vals = [getattr(img, feat, None) for img in classe_imgs if getattr(img, feat, None) is not None]
+            vals = [v for v in vals if v is not None]  # Filtre les None pour éviter l'erreur numpy
+            if vals:
+                stats[classe][feat] = {
+                    "mean": float(np.mean(vals)),
+                    "std": float(np.std(vals)),
+                    "count": len(vals)
+                }
+            else:
+                stats[classe][feat] = {"mean": None, "std": None, "count": 0}
+    return render_template('audit.html', audit_results=audit_results, feature_stats=stats)
+
+@app.route('/api/map_data')
+def api_map_data():
+    images = TrashImage.query.all()
+    data = []
+    for img in images:
+        data.append({
+            'id': img.id,
+            'latitude': img.latitude,
+            'longitude': img.longitude,
+            'status': img.status,
+            'ai_prediction': img.ai_prediction,
+            'upload_date': img.upload_date.strftime('%Y-%m-%d %H:%M'),
+            'location_name': img.location_name,
+            'filename': img.filename,
+            'url': url_for('uploaded_file', filename=img.filename)
+        })
+    return jsonify(data)
+
+KNN_MODEL_FILE = 'knn_model.pkl'
+RF_MODEL_FILE = 'rf_model.pkl'
+SVM_MODEL_FILE = 'svm_model.pkl'
+
+# Fonction d'extraction des features pour une image (utilise analyze_image_advanced)
+def extract_features_for_knn(image_path):
+    features = analyze_image_advanced(image_path)
+    if not features:
+        return None
+    return [
+        features['brightness'],
+        features['contrast'],
+        features['color_variance'],
+        features['edge_density'],
+        features['texture_complexity'],
+        features['dark_pixel_ratio'],
+        features['color_entropy']
+    ]
+
+# Entraînement du modèle KNN, RandomForest et SVM à partir des images d'entraînement
+def train_ml_models():
+    X = []
+    y = []
+    # Images vides (clean)
+    clean_dir = os.path.join(app.config['TRAINING_FOLDER'], 'with_label', 'clean')
+    for img_file in glob.glob(os.path.join(clean_dir, '*')):
+        if img_file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
+            feats = extract_features_for_knn(img_file)
+            if feats:
+                X.append(feats)
+                y.append(0)  # 0 = empty
+    # Images pleines (dirty)
+    dirty_dir = os.path.join(app.config['TRAINING_FOLDER'], 'with_label', 'dirty')
+    for img_file in glob.glob(os.path.join(dirty_dir, '*')):
+        if img_file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
+            feats = extract_features_for_knn(img_file)
+            if feats:
+                X.append(feats)
+                y.append(1)  # 1 = full
+    if not X:
+        print('Aucune donnée pour entraîner les modèles ML.')
+        return False
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    # KNN
+    knn = KNeighborsClassifier(n_neighbors=5)
+    knn.fit(X_scaled, y)
+    with open(KNN_MODEL_FILE, 'wb') as f:
+        pickle.dump(knn, f)
+    # Random Forest
+    rf = RandomForestClassifier(n_estimators=50, random_state=42)
+    rf.fit(X_scaled, y)
+    with open(RF_MODEL_FILE, 'wb') as f:
+        pickle.dump(rf, f)
+    # SVM (avec probas)
+    svm = SVC(probability=True, kernel='rbf', random_state=42)
+    svm.fit(X_scaled, y)
+    with open(SVM_MODEL_FILE, 'wb') as f:
+        pickle.dump(svm, f)
+    # Sauvegarde du scaler
+    with open('scaler_ml.pkl', 'wb') as f:
+        pickle.dump(scaler, f)
+    print(f'Modèles ML entraînés et sauvegardés ({len(X)} images).')
+    return True
+
+# Route admin pour entraîner les modèles ML manuellement
+@app.route('/train_knn')
+def train_knn_route():
+    ok = train_ml_models()
+    if ok:
+        flash('Modèles ML (KNN, RF, SVM) entraînés avec succès.')
+    else:
+        flash('Erreur lors de l\'entraînement des modèles ML (pas assez de données).')
+    return redirect(url_for('rules'))
+
+@app.route('/reset_rules_knn')
+def reset_rules_knn():
+    import numpy as np
+    # Collecte des features par classe
+    clean_dir = os.path.join(app.config['TRAINING_FOLDER'], 'with_label', 'clean')
+    dirty_dir = os.path.join(app.config['TRAINING_FOLDER'], 'with_label', 'dirty')
+    clean_feats = []
+    dirty_feats = []
+    for img_file in glob.glob(os.path.join(clean_dir, '*')):
+        if img_file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
+            feats = extract_features_for_knn(img_file)
+            if feats:
+                clean_feats.append(feats)
+    for img_file in glob.glob(os.path.join(dirty_dir, '*')):
+        if img_file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
+            feats = extract_features_for_knn(img_file)
+            if feats:
+                dirty_feats.append(feats)
+    if not clean_feats or not dirty_feats:
+        flash("Pas assez de données pour réinitialiser les règles.")
+        return redirect(url_for('rules'))
+    clean_feats = np.array(clean_feats)
+    dirty_feats = np.array(dirty_feats)
+    # Calcul des seuils optimaux (moyenne entre les deux classes)
+    thresholds = {
+        'brightness_full_max': float(np.max(dirty_feats[:,0])),
+        'brightness_empty_min': float(np.min(clean_feats[:,0])),
+        'contrast_full_max': float(np.max(dirty_feats[:,1])),
+        'contrast_empty_min': float(np.min(clean_feats[:,1])),
+        'color_variance_full_max': float(np.max(dirty_feats[:,2])),
+        'color_variance_empty_min': float(np.min(clean_feats[:,2])),
+        'edge_density_full_max': float(np.max(dirty_feats[:,3])),
+        'edge_density_empty_min': float(np.min(clean_feats[:,3])),
+        'dark_pixel_ratio_full_min': float(np.min(dirty_feats[:,5])),
+        'dark_pixel_ratio_empty_max': float(np.max(clean_feats[:,5]))
+    }
+    save_rules_config(thresholds)
+    flash("Règles réinitialisées selon les statistiques du KNN.")
+    return redirect(url_for('rules'))
 
 if __name__ == '__main__':
     with app.app_context():

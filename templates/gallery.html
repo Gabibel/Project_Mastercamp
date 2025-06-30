@@ -74,42 +74,46 @@
                         <h6 class="card-title">{{ image.original_filename[:30] }}{% if image.original_filename|length > 30 %}...{% endif %}</h6>
                         <p class="card-text text-muted small"><i class="fas fa-calendar me-1"></i>{{ image.upload_date.strftime('%d/%m/%Y %H:%M') }}</p>
                         
-                        <!-- Prédiction IA -->
-                        {% if image.ai_prediction %}
-                        <div class="ai-prediction mb-3">
-                            <div class="d-flex align-items-center mb-2">
-                                <i class="fas fa-robot text-info me-2"></i>
-                                <strong class="text-info">Prédiction IA</strong>
-                            </div>
-                            <div class="row text-center">
-                                <div class="col-6">
-                                    {% if image.ai_prediction == 'unknown' %}
-                                        <span class="badge bg-secondary">
-                                            <i class="fas fa-question-circle me-1"></i>Incertaine
-                                        </span>
-                                    {% else %}
-                                        <span class="badge {% if image.ai_prediction == 'full' %}bg-danger{% else %}bg-success{% endif %}">
-                                            <i class="fas {% if image.ai_prediction == 'full' %}fa-exclamation-triangle{% else %}fa-check-circle{% endif %} me-1"></i>
-                                            {{ image.ai_prediction|title }}
-                                        </span>
-                                    {% endif %}
-                                </div>
-                                <div class="col-6">
-                                    <small class="text-muted">
-                                        <i class="fas fa-chart-line me-1"></i><br>
-                                        <span class="fw-bold">{{ "%.0f"|format(image.ai_confidence * 100) }}%</span><br>
-                                        <span class="small">Confiance</span>
-                                    </small>
-                                </div>
+                        <!-- Résultat final ML (vote) en haut -->
+                        <div class="row mb-2">
+                            <div class="col-12 text-center">
+                                {% if image.ml_vote == 'full' %}
+                                    <span class="badge bg-danger fs-5 px-4 py-2"><i class="fas fa-vote-yea me-2"></i>Vote final : Pleine</span>
+                                {% elif image.ml_vote == 'empty' %}
+                                    <span class="badge bg-success fs-5 px-4 py-2"><i class="fas fa-vote-yea me-2"></i>Vote final : Vide</span>
+                                {% else %}
+                                    <span class="badge bg-secondary fs-5 px-4 py-2"><i class="fas fa-vote-yea me-2"></i>Vote final : N/A</span>
+                                {% endif %}
                             </div>
                         </div>
-                        {% endif %}
+                        <!-- Prédiction par règles -->
+                        <div class="row text-center mb-2">
+                            <div class="col-12">
+                                <span class="badge bg-info text-dark"><i class="fas fa-cogs me-1"></i>Règles<br>{{ image.ai_prediction|title if image.ai_prediction else 'N/A' }}</span><br>
+                                <small class="text-muted">Confiance : {% if image.ai_confidence is not none %}{{ (image.ai_confidence * 100)|round(1) }}%{% else %}N/A{% endif %}</small>
+                            </div>
+                        </div>
+                        <!-- Résultats Machine Learning -->
+                        <div class="row text-center mb-2">
+                            <div class="col-4">
+                                <span class="badge bg-primary"><i class="fas fa-user-friends me-1"></i>KNN<br>{{ image.knn_prediction|title if image.knn_prediction else 'N/A' }}</span><br>
+                                <small class="text-muted">Confiance : {% if image.knn_confidence is not none %}{{ (image.knn_confidence * 100)|round(1) }}%{% else %}N/A{% endif %}</small>
+                            </div>
+                            <div class="col-4">
+                                <span class="badge bg-success"><i class="fas fa-tree me-1"></i>RF<br>{{ image.rf_prediction|title if image.rf_prediction else 'N/A' }}</span><br>
+                                <small class="text-muted">Confiance : {% if image.rf_confidence is not none %}{{ (image.rf_confidence * 100)|round(1) }}%{% else %}N/A{% endif %}</small>
+                            </div>
+                            <div class="col-4">
+                                <span class="badge bg-warning text-dark"><i class="fas fa-wave-square me-1"></i>SVM<br>{{ image.svm_prediction|title if image.svm_prediction else 'N/A' }}</span><br>
+                                <small class="text-muted">Confiance : {% if image.svm_confidence is not none %}{{ (image.svm_confidence * 100)|round(1) }}%{% else %}N/A{% endif %}</small>
+                            </div>
+                        </div>
                         
                         <!-- Métadonnées techniques -->
                         <div class="row text-center">
                             <div class="col-4"><small class="text-muted"><i class="fas fa-expand-arrows-alt me-1"></i><br>{{ image.width }}×{{ image.height }}</small></div>
-                            <div class="col-4"><small class="text-muted"><i class="fas fa-weight-hanging me-1"></i><br>{{ (image.file_size / 1024)|round(1) }} KB</small></div>
-                            <div class="col-4"><small class="text-muted"><i class="fas fa-lightbulb me-1"></i><br>{{ image.brightness|round(0) }}</small></div>
+                            <div class="col-4"><small class="text-muted"><i class="fas fa-weight-hanging me-1"></i><br>{% if image.file_size %}{{ (image.file_size / 1024)|round(1) }} KB{% else %}N/A{% endif %}</small></div>
+                            <div class="col-4"><small class="text-muted"><i class="fas fa-lightbulb me-1"></i><br>{% if image.brightness is not none %}{{ image.brightness|round(0) }}{% else %}N/A{% endif %}</small></div>
                         </div>
                     </div>
                     <div class="card-footer bg-transparent">

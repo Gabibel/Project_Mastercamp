@@ -80,7 +80,7 @@
             <div class="card stat-card">
                 <div class="card-body text-center">
                     <i class="fas fa-percentage fa-3x text-success mb-3"></i>
-                    <h3 class="card-title">{{ "%.1f"|format(ai_accuracy) }}%</h3>
+                    <h3 class="card-title">{{ "%.1f"|format(ml_accuracy) }}%</h3>
                     <p class="card-text">Précision globale</p>
                     <small class="text-muted">{{ total_validated }} images validées</small>
                 </div>
@@ -90,9 +90,9 @@
             <div class="card stat-card">
                 <div class="card-body text-center">
                     <i class="fas fa-check-double fa-3x text-success mb-3"></i>
-                    <h3 class="card-title">{{ ai_correct }}</h3>
+                    <h3 class="card-title">{{ ml_correct }}</h3>
                     <p class="card-text">Prédictions correctes</p>
-                    <small class="text-muted">IA a raison</small>
+                    <small class="text-muted">Vote ML a raison</small>
                 </div>
             </div>
         </div>
@@ -100,19 +100,69 @@
             <div class="card stat-card">
                 <div class="card-body text-center">
                     <i class="fas fa-times-circle fa-3x text-danger mb-3"></i>
-                    <h3 class="card-title">{{ ai_incorrect }}</h3>
+                    <h3 class="card-title">{{ ml_incorrect }}</h3>
                     <p class="card-text">Prédictions incorrectes</p>
-                    <small class="text-muted">IA a tort</small>
+                    <small class="text-muted">Vote ML a tort</small>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card stat-card">
-                <div class="card-body text-center">
-                    <i class="fas fa-question-circle fa-3x text-warning mb-3"></i>
-                    <h3 class="card-title">{{ ai_pred_unknown }}</h3>
-                    <p class="card-text">Prédictions incertaines</p>
-                    <small class="text-muted">Confiance faible</small>
+    </div>
+    
+    <!-- Comparaison des modèles -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3"><i class="fas fa-balance-scale me-2"></i>Comparaison des modèles IA</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered text-center align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Modèle</th>
+                                    <th>Précision</th>
+                                    <th>Corrects</th>
+                                    <th>Total</th>
+                                    <th>Indécis</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><i class="fas fa-user-friends text-primary me-1"></i>KNN</td>
+                                    <td>{{ (100 * knn_correct / knn_total)|round(1) if knn_total else 'N/A' }}%</td>
+                                    <td>{{ knn_correct }}</td>
+                                    <td>{{ knn_total }}</td>
+                                    <td>-</td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-tree text-success me-1"></i>Random Forest</td>
+                                    <td>{{ (100 * rf_correct / rf_total)|round(1) if rf_total else 'N/A' }}%</td>
+                                    <td>{{ rf_correct }}</td>
+                                    <td>{{ rf_total }}</td>
+                                    <td>-</td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-wave-square text-warning me-1"></i>SVM</td>
+                                    <td>{{ (100 * svm_correct / svm_total)|round(1) if svm_total else 'N/A' }}%</td>
+                                    <td>{{ svm_correct }}</td>
+                                    <td>{{ svm_total }}</td>
+                                    <td>-</td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-cogs text-info me-1"></i>Règles</td>
+                                    <td>
+                                        {% if rules_total > 0 %}
+                                            {{ (100 * rules_correct / rules_total)|round(1) }}%
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ rules_correct }}</td>
+                                    <td>{{ rules_total }}</td>
+                                    <td>{{ rules_indecis }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -254,9 +304,37 @@
             </div>
         </div>
     </div>
+    <!-- Carte interactive des poubelles -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3"><i class="fas fa-map-marker-alt me-2"></i>Carte des poubelles</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="mapDateFilter" class="form-label">Filtrer par date :</label>
+                            <input type="date" id="mapDateFilter" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="mapStatusFilter" class="form-label">Filtrer par statut :</label>
+                            <select id="mapStatusFilter" class="form-select">
+                                <option value="all">Tous</option>
+                                <option value="full">Pleine</option>
+                                <option value="empty">Vide</option>
+                                <option value="pending">En attente</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="trashMap" style="height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script>
 let allData = [];
 let statusChartObj = null;
@@ -269,8 +347,8 @@ const aiData = {
     predFull: {{ ai_pred_full }},
     predEmpty: {{ ai_pred_empty }},
     predUnknown: {{ ai_pred_unknown }},
-    correct: {{ ai_correct }},
-    incorrect: {{ ai_incorrect }},
+    correct: {{ ml_correct }},
+    incorrect: {{ ml_incorrect }},
     totalValidated: {{ total_validated }}
 };
 
@@ -280,10 +358,10 @@ function initAICharts() {
     aiPredictionsChartObj = new Chart(ctx1, {
         type: 'doughnut',
         data: {
-            labels: ['Pleine', 'Vide', 'Incertaine'],
+            labels: ['Pleine', 'Vide'],
             datasets: [{
-                data: [aiData.predFull, aiData.predEmpty, aiData.predUnknown],
-                backgroundColor: ['#e74c3c', '#2ecc71', '#f1c40f'],
+                data: [aiData.predFull, aiData.predEmpty],
+                backgroundColor: ['#e74c3c', '#2ecc71'],
                 borderWidth: 2,
                 borderColor: '#fff'
             }]
@@ -408,6 +486,59 @@ fetch('/api/stats')
 
 document.getElementById('statusFilter').addEventListener('change', applyFilters);
 document.getElementById('dateFilter').addEventListener('change', applyFilters);
+
+// Carte Leaflet
+let map = L.map('trashMap').setView([48.8566, 2.3522], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+}).addTo(map);
+let markersLayer = L.layerGroup().addTo(map);
+
+function updateMapMarkers(images) {
+    markersLayer.clearLayers();
+    images.forEach(img => {
+        let color = img.status === 'full' ? 'red' : (img.status === 'empty' ? 'green' : 'orange');
+        let marker = L.circleMarker([img.latitude, img.longitude], {
+            color: color,
+            radius: 10,
+            fillOpacity: 0.8
+        }).addTo(markersLayer);
+        marker.bindPopup(`<b>${img.original_filename || 'Image'}</b><br>Status : ${img.status}<br>Date : ${img.upload_date}<br>Lieu : ${img.location_name}`);
+    });
+}
+
+// Récupération des données via l'API
+let allMapImages = [];
+function fetchMapData(dateFilter=null, statusFilter='all') {
+    fetch('/api/map_data')
+        .then(resp => resp.json())
+        .then(data => {
+            allMapImages = data;
+            let filtered = data;
+            if(dateFilter) {
+                filtered = filtered.filter(img => img.upload_date.startsWith(dateFilter));
+            }
+            if(statusFilter && statusFilter !== 'all') {
+                filtered = filtered.filter(img => img.status === statusFilter);
+            }
+            updateMapMarkers(filtered);
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    fetchMapData();
+    document.getElementById('mapDateFilter').addEventListener('change', function() {
+        let date = this.value;
+        let status = document.getElementById('mapStatusFilter').value;
+        fetchMapData(date, status);
+    });
+    document.getElementById('mapStatusFilter').addEventListener('change', function() {
+        let status = this.value;
+        let date = document.getElementById('mapDateFilter').value;
+        fetchMapData(date, status);
+    });
+});
 </script>
 
 <style>
