@@ -6,6 +6,40 @@
 <div class="container py-5">
     <h2 class="mb-4"><i class="fas fa-search me-2"></i>Audit de conformité des données</h2>
     <div class="alert alert-info">Cette page liste toutes les images et signale les éventuelles incohérences ou anomalies détectées dans la base.</div>
+    <!-- Audit rapide des features -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3"><i class="fas fa-chart-bar me-2"></i>Audit rapide des features (moyenne ± écart-type)</h5>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Classe</th>
+                            {% for feat in feature_stats['full'].keys() %}
+                                <th>{{ feat }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for classe in ['full', 'empty'] %}
+                        <tr>
+                            <td><b>{% if classe == 'full' %}Pleine{% else %}Vide{% endif %}</b></td>
+                            {% for feat, stat in feature_stats[classe].items() %}
+                                <td>
+                                    {% if stat.mean is not none %}
+                                        {{ stat.mean|round(2) }} ± {{ stat.std|round(2) }}<br><small class="text-muted">(n={{ stat.count }})</small>
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
     <table class="table table-bordered table-hover align-middle">
         <thead class="table-light">
             <tr>

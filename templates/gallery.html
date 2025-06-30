@@ -58,11 +58,13 @@
                 <div class="card h-100 image-card" id="image-card-{{ image.id }}">
                     <div class="position-relative">
                         <img src="{{ url_for('uploaded_file', filename=image.filename) }}" class="card-img-top gallery-img-thumb" alt="Image de poubelle" style="height: 200px; object-fit: cover; cursor:pointer;" data-image-index="{{ loop.index0 }}">
-                        <div class="position-absolute top-0 end-0 m-2">
+                        <div class="position-absolute top-0 end-0 m-2 status-badge">
                             {% if image.status == 'full' %}
                                 <span class="badge bg-danger"><i class="fas fa-exclamation-triangle me-1"></i>Pleine</span>
                             {% elif image.status == 'empty' %}
                                 <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Vide</span>
+                            {% elif image.status == 'pending' %}
+                                <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>En attente</span>
                             {% elif image.ai_prediction == 'unknown' %}
                                 <span class="badge bg-secondary"><i class="fas fa-question-circle me-1"></i>Incertaine</span>
                             {% else %}
@@ -74,42 +76,46 @@
                         <h6 class="card-title">{{ image.original_filename[:30] }}{% if image.original_filename|length > 30 %}...{% endif %}</h6>
                         <p class="card-text text-muted small"><i class="fas fa-calendar me-1"></i>{{ image.upload_date.strftime('%d/%m/%Y %H:%M') }}</p>
                         
-                        <!-- Prédiction IA -->
-                        {% if image.ai_prediction %}
-                        <div class="ai-prediction mb-3">
-                            <div class="d-flex align-items-center mb-2">
-                                <i class="fas fa-robot text-info me-2"></i>
-                                <strong class="text-info">Prédiction IA</strong>
-                            </div>
-                            <div class="row text-center">
-                                <div class="col-6">
-                                    {% if image.ai_prediction == 'unknown' %}
-                                        <span class="badge bg-secondary">
-                                            <i class="fas fa-question-circle me-1"></i>Incertaine
-                                        </span>
-                                    {% else %}
-                                        <span class="badge {% if image.ai_prediction == 'full' %}bg-danger{% else %}bg-success{% endif %}">
-                                            <i class="fas {% if image.ai_prediction == 'full' %}fa-exclamation-triangle{% else %}fa-check-circle{% endif %} me-1"></i>
-                                            {{ image.ai_prediction|title }}
-                                        </span>
-                                    {% endif %}
-                                </div>
-                                <div class="col-6">
-                                    <small class="text-muted">
-                                        <i class="fas fa-chart-line me-1"></i><br>
-                                        <span class="fw-bold">{{ "%.0f"|format(image.ai_confidence * 100) }}%</span><br>
-                                        <span class="small">Confiance</span>
-                                    </small>
-                                </div>
+                        <!-- Résultat final ML (vote) en haut -->
+                        <div class="row mb-2">
+                            <div class="col-12 text-center">
+                                {% if image.ml_vote == 'full' %}
+                                    <span class="badge bg-danger fs-5 px-4 py-2"><i class="fas fa-vote-yea me-2"></i>Vote final : Pleine</span>
+                                {% elif image.ml_vote == 'empty' %}
+                                    <span class="badge bg-success fs-5 px-4 py-2"><i class="fas fa-vote-yea me-2"></i>Vote final : Vide</span>
+                                {% else %}
+                                    <span class="badge bg-secondary fs-5 px-4 py-2"><i class="fas fa-vote-yea me-2"></i>Vote final : N/A</span>
+                                {% endif %}
                             </div>
                         </div>
-                        {% endif %}
+                        <!-- Prédiction par règles -->
+                        <div class="row text-center mb-2">
+                            <div class="col-12">
+                                <span class="badge bg-info text-dark"><i class="fas fa-cogs me-1"></i>Règles<br>{{ image.ai_prediction|title if image.ai_prediction else 'N/A' }}</span><br>
+                                <small class="text-muted">Confiance : {% if image.ai_confidence is not none %}{{ (image.ai_confidence * 100)|round(1) }}%{% else %}N/A{% endif %}</small>
+                            </div>
+                        </div>
+                        <!-- Résultats Machine Learning -->
+                        <div class="row text-center mb-2">
+                            <div class="col-4">
+                                <span class="badge bg-primary"><i class="fas fa-user-friends me-1"></i>KNN<br>{{ image.knn_prediction|title if image.knn_prediction else 'N/A' }}</span><br>
+                                <small class="text-muted">Confiance : {% if image.knn_confidence is not none %}{{ (image.knn_confidence * 100)|round(1) }}%{% else %}N/A{% endif %}</small>
+                            </div>
+                            <div class="col-4">
+                                <span class="badge bg-success"><i class="fas fa-tree me-1"></i>RF<br>{{ image.rf_prediction|title if image.rf_prediction else 'N/A' }}</span><br>
+                                <small class="text-muted">Confiance : {% if image.rf_confidence is not none %}{{ (image.rf_confidence * 100)|round(1) }}%{% else %}N/A{% endif %}</small>
+                            </div>
+                            <div class="col-4">
+                                <span class="badge bg-warning text-dark"><i class="fas fa-wave-square me-1"></i>SVM<br>{{ image.svm_prediction|title if image.svm_prediction else 'N/A' }}</span><br>
+                                <small class="text-muted">Confiance : {% if image.svm_confidence is not none %}{{ (image.svm_confidence * 100)|round(1) }}%{% else %}N/A{% endif %}</small>
+                            </div>
+                        </div>
                         
                         <!-- Métadonnées techniques -->
                         <div class="row text-center">
                             <div class="col-4"><small class="text-muted"><i class="fas fa-expand-arrows-alt me-1"></i><br>{{ image.width }}×{{ image.height }}</small></div>
-                            <div class="col-4"><small class="text-muted"><i class="fas fa-weight-hanging me-1"></i><br>{{ (image.file_size / 1024)|round(1) }} KB</small></div>
-                            <div class="col-4"><small class="text-muted"><i class="fas fa-lightbulb me-1"></i><br>{{ image.brightness|round(0) }}</small></div>
+                            <div class="col-4"><small class="text-muted"><i class="fas fa-weight-hanging me-1"></i><br>{% if image.file_size %}{{ (image.file_size / 1024)|round(1) }} KB{% else %}N/A{% endif %}</small></div>
+                            <div class="col-4"><small class="text-muted"><i class="fas fa-lightbulb me-1"></i><br>{% if image.brightness is not none %}{{ image.brightness|round(0) }}{% else %}N/A{% endif %}</small></div>
                         </div>
                     </div>
                     <div class="card-footer bg-transparent">
@@ -121,16 +127,20 @@
                                         <i class="fas fa-trash me-1"></i>Supprimer
                                     </button>
                                 </form>
+                                <!-- Bouton demander à l'IA (toujours visible) -->
+                                <a href="#" class="btn btn-sm btn-outline-primary ms-2 ajax-ia-btn" data-image-id="{{ image.id }}" data-url="{{ url_for('resimuler_image_ajax', image_id=image.id) }}">
+                                    <i class="fas fa-robot me-1"></i>Demander à l'IA
+                                </a>
                                 <!-- Boutons d'annotation rapide uniquement si en attente -->
                                 {% if image.status == 'pending' %}
                                 <div class="btn-group btn-group-sm annotation-group ms-2" role="group" data-image-id="{{ image.id }}">
-                                    <form method="POST" action="{{ url_for('validate_prediction', image_id=image.id) }}" style="display:inline;">
+                                    <form method="POST" action="{{ url_for('validate_prediction_ajax', image_id=image.id) }}" class="ajax-validate-form" data-image-id="{{ image.id }}" style="display:inline;">
                                         <input type="hidden" name="status" value="full">
                                         <button type="submit" class="btn btn-outline-danger annotate-btn" data-action="full">
                                             <i class="fas fa-exclamation-triangle me-1"></i>Pleine
                                         </button>
                                     </form>
-                                    <form method="POST" action="{{ url_for('validate_prediction', image_id=image.id) }}" style="display:inline;">
+                                    <form method="POST" action="{{ url_for('validate_prediction_ajax', image_id=image.id) }}" class="ajax-validate-form" data-image-id="{{ image.id }}" style="display:inline;">
                                         <input type="hidden" name="status" value="empty">
                                         <button type="submit" class="btn btn-outline-success annotate-btn" data-action="empty">
                                             <i class="fas fa-check-circle me-1"></i>Vide
@@ -141,7 +151,7 @@
                             </div>
                             <!-- Indicateur de validation IA -->
                             {% if image.ai_validated %}
-                                {% if image.ai_correct %}
+                                {% if image.ml_correct %}
                                     <small class="text-success"><i class="fas fa-check-circle me-1"></i>IA correcte</small>
                                 {% else %}
                                     <small class="text-danger"><i class="fas fa-times-circle me-1"></i>IA incorrecte</small>
@@ -296,6 +306,75 @@ function modalKeyHandler(e) {
         if(currentIdx > 0) showAnnotateModal(currentIdx-1);
     }
 }
+
+document.querySelectorAll('.ajax-validate-form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const imageId = this.getAttribute('data-image-id');
+        const formData = new FormData(this);
+        fetch(this.action, {
+            method: 'POST',
+            body: formData
+        })
+        .then(resp => resp.json())
+        .then(data => {
+            if(data.success) {
+                // Mettre à jour le badge statut
+                const card = document.getElementById('image-card-' + imageId);
+                const badgeDiv = card.querySelector('.status-badge');
+                if (badgeDiv) badgeDiv.innerHTML = data.badge_html;
+                // Mettre à jour l'indicateur IA
+                const iaStatus = card.querySelector('.card-footer .text-success, .card-footer .text-danger');
+                if(iaStatus) iaStatus.outerHTML = data.ia_status_html;
+                else {
+                    // Si pas encore présent, l'ajouter
+                    const footer = card.querySelector('.card-footer .d-flex');
+                    if(footer) footer.insertAdjacentHTML('beforeend', data.ia_status_html);
+                }
+            } else {
+                alert('Erreur : ' + (data.error || 'Validation impossible.'));
+            }
+        });
+    });
+});
+
+document.querySelectorAll('.ajax-ia-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const imageId = this.getAttribute('data-image-id');
+        const url = this.getAttribute('data-url');
+        fetch(url, { method: 'POST' })
+        .then(resp => resp.json())
+        .then(data => {
+            if(data.success) {
+                // Mettre à jour le badge statut
+                const card = document.getElementById('image-card-' + imageId);
+                const badgeDiv = card.querySelector('.status-badge');
+                if (badgeDiv) badgeDiv.innerHTML = data.badge_html;
+                // Mettre à jour les prédictions IA/ML
+                card.querySelector('.badge.bg-info').innerHTML = `<i class='fas fa-cogs me-1'></i>Règles<br>${data.ai_prediction ? data.ai_prediction.charAt(0).toUpperCase() + data.ai_prediction.slice(1) : 'N/A'}`;
+                card.querySelector('.badge.bg-info + br + small').innerHTML = `Confiance : ${data.ai_confidence !== null ? (data.ai_confidence * 100).toFixed(1) + '%' : 'N/A'}`;
+                card.querySelector('.badge.bg-primary').innerHTML = `<i class='fas fa-user-friends me-1'></i>KNN<br>${data.knn_prediction ? data.knn_prediction.charAt(0).toUpperCase() + data.knn_prediction.slice(1) : 'N/A'}`;
+                card.querySelector('.badge.bg-success').innerHTML = `<i class='fas fa-tree me-1'></i>RF<br>${data.rf_prediction ? data.rf_prediction.charAt(0).toUpperCase() + data.rf_prediction.slice(1) : 'N/A'}`;
+                card.querySelector('.badge.bg-warning').innerHTML = `<i class='fas fa-wave-square me-1'></i>SVM<br>${data.svm_prediction ? data.svm_prediction.charAt(0).toUpperCase() + data.svm_prediction.slice(1) : 'N/A'}`;
+                // Mettre à jour le vote ML
+                const mlVoteDiv = card.querySelector('.row.mb-2 .col-12 span');
+                if(data.ml_vote === 'full') {
+                    mlVoteDiv.className = 'badge bg-danger fs-5 px-4 py-2';
+                    mlVoteDiv.innerHTML = `<i class='fas fa-vote-yea me-2'></i>Vote final : Pleine`;
+                } else if(data.ml_vote === 'empty') {
+                    mlVoteDiv.className = 'badge bg-success fs-5 px-4 py-2';
+                    mlVoteDiv.innerHTML = `<i class='fas fa-vote-yea me-2'></i>Vote final : Vide`;
+                } else {
+                    mlVoteDiv.className = 'badge bg-secondary fs-5 px-4 py-2';
+                    mlVoteDiv.innerHTML = `<i class='fas fa-vote-yea me-2'></i>Vote final : N/A`;
+                }
+            } else {
+                alert('Erreur : ' + (data.error || 'Analyse IA impossible.'));
+            }
+        });
+    });
+});
 </script>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

@@ -15,6 +15,12 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from io import BytesIO
 import threading
+import glob
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+import sqlite3
+from sklearn.preprocessing import StandardScaler
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'votre_cle_secrete_ici'
@@ -39,6 +45,21 @@ class TrashImage(db.Model):
     ai_validated = db.Column(db.Boolean, default=False)  # Si l'IA a été validée
     ai_correct = db.Column(db.Boolean)  # Si la prédiction IA était correcte
     
+    # Prédiction KNN
+    knn_prediction = db.Column(db.String(50))  # 'full' ou 'empty'
+    knn_confidence = db.Column(db.Float)  # Score de confiance (0-1)
+    
+    # Prédiction Random Forest
+    rf_prediction = db.Column(db.String(50))
+    rf_confidence = db.Column(db.Float)
+    
+    # Prédiction SVM
+    svm_prediction = db.Column(db.String(50))
+    svm_confidence = db.Column(db.Float)
+    
+    # Vote final ML
+    ml_vote = db.Column(db.String(50))
+    
     # Métadonnées d'analyse avancée
     file_size = db.Column(db.Integer)
     width = db.Column(db.Integer)
@@ -60,64 +81,51 @@ class TrashImage(db.Model):
     latitude = db.Column(db.Float, default=48.8566)
     longitude = db.Column(db.Float, default=2.3522)
     location_name = db.Column(db.String(255), default='Paris')
+    
+    # Ajout du champ ml_correct dans TrashImage
+    ml_correct = db.Column(db.Boolean)  # Si le vote ML était correct
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
 def analyze_image_advanced(image_path):
-    """Analyse avancée de l'image avec de multiples caractéristiques"""
+    """Analyse avancée de l'image avec de multiples caractéristiques réelles"""
     try:
         file_size = os.path.getsize(image_path)
-        
-        # Simulation d'analyse avancée (remplacera PIL/OpenCV plus tard)
-        # Pour l'instant, générons des valeurs réalistes basées sur le nom du fichier
-        
-        filename = os.path.basename(image_path).lower()
-        
-        # Détection basique basée sur le nom de fichier
-        is_full = any(word in filename for word in ['full', 'pleine', 'rempli', 'debord'])
-        is_empty = any(word in filename for word in ['empty', 'vide', 'libre', 'disponible'])
-        
-        if is_full:
-            # Caractéristiques d'une poubelle pleine
-            brightness = np.random.normal(80, 15)  # Plus sombre
-            contrast = np.random.normal(25, 8)     # Moins de contraste
-            color_variance = np.random.normal(600, 150)  # Moins de variété
-            edge_density = np.random.normal(0.12, 0.03)  # Moins de contours
-            texture_complexity = np.random.normal(0.4, 0.1)  # Texture simple
-            dark_pixel_ratio = np.random.normal(0.6, 0.1)   # Beaucoup de pixels sombres
-            color_entropy = np.random.normal(5.5, 0.5)      # Entropie faible
-        elif is_empty:
-            # Caractéristiques d'une poubelle vide
-            brightness = np.random.normal(160, 20)  # Plus claire
-            contrast = np.random.normal(55, 10)     # Plus de contraste
-            color_variance = np.random.normal(1400, 200)  # Plus de variété
-            edge_density = np.random.normal(0.28, 0.05)   # Plus de contours
-            texture_complexity = np.random.normal(0.7, 0.15)  # Texture complexe
-            dark_pixel_ratio = np.random.normal(0.15, 0.05)   # Peu de pixels sombres
-            color_entropy = np.random.normal(7.2, 0.6)        # Entropie élevée
+        img = Image.open(image_path).convert('RGB')
+        width, height = img.size
+        stat = ImageStat.Stat(img)
+        avg_color_r, avg_color_g, avg_color_b = stat.mean
+        # Calcul de la luminance (perçue)
+        np_img = np.array(img)
+        luminance = 0.2126 * np_img[:,:,0] + 0.7152 * np_img[:,:,1] + 0.0722 * np_img[:,:,2]
+        brightness = float(np.mean(luminance))
+        contrast = float(np.std(luminance))
+        # Variance des couleurs (sur tous les canaux)
+        color_variance = float(np.var(np_img))
+        # Densité de contours (OpenCV Canny)
+        img_gray = cv2.cvtColor(np_img, cv2.COLOR_RGB2GRAY)
+        edges = cv2.Canny(img_gray, 100, 200)
+        edge_density = float(np.sum(edges > 0)) / (width * height)
+        # Complexité de texture (std du Laplacien)
+        laplacian = cv2.Laplacian(img_gray, cv2.CV_64F)
+        texture_complexity = float(np.std(laplacian)) / 100.0  # normalisé
+        # Ratio de pixels sombres (luminance < 50)
+        dark_pixel_ratio = float(np.sum(luminance < 50)) / (width * height)
+        # Entropie des couleurs (histogramme sur 256 bins)
+        hist = cv2.calcHist([img_gray], [0], None, [256], [0,256])
+        hist_norm = hist / hist.sum()
+        color_entropy = float(-np.sum(hist_norm * np.log2(hist_norm + 1e-7)))
+        # Distribution spatiale (std des positions des pixels sombres)
+        dark_pixels = np.argwhere(luminance < 50)
+        if len(dark_pixels) > 0:
+            spatial_distribution = float(np.std(dark_pixels[:,0]) + np.std(dark_pixels[:,1])) / (width + height)
         else:
-            # Valeurs neutres
-            brightness = np.random.normal(128, 30)
-            contrast = np.random.normal(40, 15)
-            color_variance = np.random.normal(1000, 300)
-            edge_density = np.random.normal(0.20, 0.08)
-            texture_complexity = np.random.normal(0.55, 0.2)
-            dark_pixel_ratio = np.random.normal(0.35, 0.15)
-            color_entropy = np.random.normal(6.3, 0.8)
-        
-        # Calcul de la couleur moyenne
-        avg_color_r = np.random.normal(128, 30)
-        avg_color_g = np.random.normal(128, 30)
-        avg_color_b = np.random.normal(128, 30)
-        
-        # Distribution spatiale (simulation)
-        spatial_distribution = np.random.uniform(0.3, 0.8)
-        
+            spatial_distribution = 0.0
         return {
             'file_size': file_size,
-            'width': 800,
-            'height': 600,
+            'width': width,
+            'height': height,
             'avg_color_r': float(avg_color_r),
             'avg_color_g': float(avg_color_g),
             'avg_color_b': float(avg_color_b),
@@ -173,10 +181,74 @@ def async_analyze_and_update(trash_image_id, filepath):
         analysis = analyze_image_advanced(filepath)
         if analysis:
             rule_prediction, rule_confidence = predict_with_advanced_ai(analysis)
+            # Prédiction KNN
+            knn_pred = None
+            knn_conf = None
+            rf_pred = None
+            rf_conf = None
+            svm_pred = None
+            svm_conf = None
+            feats = [
+                analysis['brightness'],
+                analysis['contrast'],
+                analysis['color_variance'],
+                analysis['edge_density'],
+                analysis['texture_complexity'],
+                analysis['dark_pixel_ratio'],
+                analysis['color_entropy']
+            ]
+            try:
+                import pickle
+                import numpy as np
+                # Charger le scaler
+                scaler = None
+                if os.path.exists('scaler_ml.pkl'):
+                    with open('scaler_ml.pkl', 'rb') as f:
+                        scaler = pickle.load(f)
+                feats_scaled = scaler.transform([feats]) if scaler else [feats]
+                # KNN
+                if os.path.exists(KNN_MODEL_FILE):
+                    with open(KNN_MODEL_FILE, 'rb') as f:
+                        knn = pickle.load(f)
+                    proba = knn.predict_proba(feats_scaled)[0]
+                    pred = knn.predict(feats_scaled)[0]
+                    knn_pred = 'empty' if pred == 0 else 'full'
+                    knn_conf = float(np.max(proba))
+                # RF
+                if os.path.exists(RF_MODEL_FILE):
+                    with open(RF_MODEL_FILE, 'rb') as f:
+                        rf = pickle.load(f)
+                    proba = rf.predict_proba(feats_scaled)[0]
+                    pred = rf.predict(feats_scaled)[0]
+                    rf_pred = 'empty' if pred == 0 else 'full'
+                    rf_conf = float(np.max(proba))
+                # SVM
+                if os.path.exists(SVM_MODEL_FILE):
+                    with open(SVM_MODEL_FILE, 'rb') as f:
+                        svm = pickle.load(f)
+                    proba = svm.predict_proba(feats_scaled)[0]
+                    pred = svm.predict(feats_scaled)[0]
+                    svm_pred = 'empty' if pred == 0 else 'full'
+                    svm_conf = float(np.max(proba))
+            except Exception as e:
+                print(f"Erreur prédiction ML : {e}")
+            # Vote majoritaire
+            votes = [p for p in [knn_pred, rf_pred, svm_pred] if p in ['full', 'empty']]
+            if votes:
+                ml_vote = max(set(votes), key=votes.count)
+            else:
+                ml_vote = None
             for k, v in analysis.items():
                 setattr(img, k, v)
             img.ai_prediction = rule_prediction
             img.ai_confidence = rule_confidence
+            img.knn_prediction = knn_pred
+            img.knn_confidence = knn_conf
+            img.rf_prediction = rf_pred
+            img.rf_confidence = rf_conf
+            img.svm_prediction = svm_pred
+            img.svm_confidence = svm_conf
+            img.ml_vote = ml_vote
             img.status = 'pending'  # Laisse à pending, l'utilisateur valide ensuite
             db.session.commit()
 
@@ -218,11 +290,32 @@ def upload():
                     img.save(filepath, format="JPEG", quality=80, optimize=True)
             except Exception as e:
                 print(f"Erreur compression image : {e}")
+            # Récupérer la localisation du formulaire
+            latitude = request.form.get('latitude', type=float)
+            longitude = request.form.get('longitude', type=float)
+            location_name = request.form.get('location_name', default='Paris')
+            # Récupérer la date/heure de la photo
+            photo_datetime_str = request.form.get('photo_datetime')
+            if photo_datetime_str:
+                try:
+                    # Format attendu : 'YYYY-MM-DDTHH:MM'
+                    photo_datetime = datetime.strptime(photo_datetime_str, '%Y-%m-%dT%H:%M')
+                    # On force le fuseau UTC pour cohérence
+                    photo_datetime = photo_datetime.replace(tzinfo=timezone.utc)
+                except Exception as e:
+                    print(f"Erreur parsing date/heure : {e}")
+                    photo_datetime = datetime.now(timezone.utc)
+            else:
+                photo_datetime = datetime.now(timezone.utc)
             # Création entrée TrashImage (status pending, sans features)
             trash_image = TrashImage(
                 filename=filename,
                 original_filename=file.filename,
                 status='pending',
+                latitude=latitude if latitude else 48.8566,
+                longitude=longitude if longitude else 2.3522,
+                location_name=location_name if location_name else 'Paris',
+                upload_date=photo_datetime,
             )
             db.session.add(trash_image)
             db.session.commit()
@@ -270,12 +363,13 @@ def validate_prediction(image_id):
         # Marquer comme validé et vérifier si l'IA avait raison
         image.ai_validated = True
         image.ai_correct = (image.ai_prediction == user_status)
+        image.ml_correct = (image.ml_vote == user_status)
         db.session.commit()
 
-        if image.ai_correct:
-            flash(f'✅ Prédiction IA correcte ! ({image.ai_prediction})')
+        if image.ml_correct:
+            flash(f'✅ Vote ML correct ! ({image.ml_vote})')
         else:
-            flash(f'❌ Prédiction IA incorrecte. IA: {image.ai_prediction}, Réel: {user_status}')
+            flash(f'❌ Vote ML incorrect. Vote: {image.ml_vote}, Réel: {user_status}')
         
         return redirect(url_for('gallery'))
     else:
@@ -301,37 +395,42 @@ def delete_image(image_id):
 @app.route('/dashboard')
 def dashboard():
     total_images = TrashImage.query.count()
-    full_images = TrashImage.query.filter_by(status='full').count()
-    empty_images = TrashImage.query.filter_by(status='empty').count()
-    
+    # Utiliser le vote final ML pour les stats
+    full_images = TrashImage.query.filter_by(ml_vote='full').count()
+    empty_images = TrashImage.query.filter_by(ml_vote='empty').count()
     # Statistiques de performance de l'algorithme IA
     validated_images = TrashImage.query.filter_by(ai_validated=True).all()
-    ai_correct = sum(1 for img in validated_images if img.ai_correct)
-    ai_incorrect = sum(1 for img in validated_images if not img.ai_correct)
-    ai_accuracy = (ai_correct / len(validated_images) * 100) if validated_images else 0
-    
+    ml_correct = sum(1 for img in validated_images if img.ml_correct)
+    ml_incorrect = sum(1 for img in validated_images if img.ml_correct is False)
+    ml_accuracy = (ml_correct / len(validated_images) * 100) if validated_images else 0
     # Répartition des prédictions IA
     ai_predictions = TrashImage.query.filter(TrashImage.ai_prediction.isnot(None)).all()
     ai_pred_full = sum(1 for img in ai_predictions if img.ai_prediction == 'full')
     ai_pred_empty = sum(1 for img in ai_predictions if img.ai_prediction == 'empty')
-    ai_pred_unknown = sum(1 for img in ai_predictions if img.ai_prediction == 'unknown')
-    
-    # Statistiques par classe (pleine/vide)
-    full_validated = [img for img in validated_images if img.status == 'full']
-    empty_validated = [img for img in validated_images if img.status == 'empty']
-    
-    full_correct = sum(1 for img in full_validated if img.ai_correct)
-    empty_correct = sum(1 for img in empty_validated if img.ai_correct)
-    
+    # Incertitude basée sur le vote ML (None ou N/A)
+    ai_pred_unknown = sum(1 for img in validated_images if not img.ml_vote or img.ml_vote not in ['full', 'empty'])
+    # Statistiques par classe (pleine/vide) selon le vote ML
+    full_validated = [img for img in validated_images if img.ml_vote == 'full']
+    empty_validated = [img for img in validated_images if img.ml_vote == 'empty']
+    full_correct = sum(1 for img in full_validated if img.ml_correct)
+    empty_correct = sum(1 for img in empty_validated if img.ml_correct)
     full_accuracy = (full_correct / len(full_validated) * 100) if full_validated else 0
     empty_accuracy = (empty_correct / len(empty_validated) * 100) if empty_validated else 0
-    
+    # Comparaison des modèles (KNN, RF, SVM, règles)
+    knn_correct = sum(1 for img in validated_images if img.knn_prediction == img.manual_status)
+    rf_correct = sum(1 for img in validated_images if img.rf_prediction == img.manual_status)
+    svm_correct = sum(1 for img in validated_images if img.svm_prediction == img.manual_status)
+    rules_correct = sum(1 for img in validated_images if img.ai_prediction == img.manual_status)
+    knn_total = sum(1 for img in validated_images if img.knn_prediction in ['full', 'empty'])
+    rf_total = sum(1 for img in validated_images if img.rf_prediction in ['full', 'empty'])
+    svm_total = sum(1 for img in validated_images if img.svm_prediction in ['full', 'empty'])
+    rules_total = len(validated_images)
+    rules_indecis = sum(1 for img in validated_images if img.ai_prediction not in ['full', 'empty'])
     # Compter les images d'entraînement dans les nouveaux dossiers
     empty_training = len([f for f in os.listdir(os.path.join(app.config['TRAINING_FOLDER'], 'with_label', 'clean')) 
                          if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))])
     full_training = len([f for f in os.listdir(os.path.join(app.config['TRAINING_FOLDER'], 'with_label', 'dirty')) 
                         if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))])
-    
     return render_template('dashboard.html',
                          total_images=total_images,
                          full_images=full_images,
@@ -339,9 +438,9 @@ def dashboard():
                          empty_training=empty_training,
                          full_training=full_training,
                          # Nouvelles statistiques IA
-                         ai_correct=ai_correct,
-                         ai_incorrect=ai_incorrect,
-                         ai_accuracy=ai_accuracy,
+                         ml_correct=ml_correct,
+                         ml_incorrect=ml_incorrect,
+                         ml_accuracy=ml_accuracy,
                          total_validated=len(validated_images),
                          ai_pred_full=ai_pred_full,
                          ai_pred_empty=ai_pred_empty,
@@ -349,7 +448,11 @@ def dashboard():
                          full_accuracy=full_accuracy,
                          empty_accuracy=empty_accuracy,
                          full_validated_count=len(full_validated),
-                         empty_validated_count=len(empty_validated))
+                         empty_validated_count=len(empty_validated),
+                         knn_correct=knn_correct, knn_total=knn_total,
+                         rf_correct=rf_correct, rf_total=rf_total,
+                         svm_correct=svm_correct, svm_total=svm_total,
+                         rules_correct=rules_correct, rules_total=rules_total, rules_indecis=rules_indecis)
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
@@ -401,13 +504,13 @@ def static_graph_status():
     images = TrashImage.query.all()
     status_labels = ['pleine', 'vide', 'en attente']
     status_counts = [
-        sum(1 for img in images if img.status == 'full'),
-        sum(1 for img in images if img.status == 'empty'),
-        sum(1 for img in images if img.status == 'pending')
+        sum(1 for img in images if img.ml_vote == 'full'),
+        sum(1 for img in images if img.ml_vote == 'empty'),
+        sum(1 for img in images if img.ml_vote not in ['full', 'empty'])
     ]
     plt.figure(figsize=(5,5))
     plt.pie(status_counts, labels=status_labels, autopct='%1.1f%%', colors=['#e74c3c','#2ecc71','#f1c40f'])
-    plt.title('Répartition des statuts')
+    plt.title('Répartition des statuts (vote ML)')
     buf = BytesIO()
     plt.savefig(buf, format='png')
     buf.seek(0)
@@ -460,36 +563,40 @@ def rules():
 
 def predict_with_advanced_ai(analysis):
     """
-    Prédiction améliorée basée sur des règles plus sophistiquées
+    Prédiction améliorée basée sur des règles plus sophistiquées et équilibrées, avec détection des poubelles fermées.
     """
     if not analysis:
         return 'unknown', 0.0
 
+    # Détection poubelle fermée : très peu de texture et de contours
+    if analysis['texture_complexity'] < 0.18 and analysis['edge_density'] < 0.07:
+        return 'unknown', 0.0
+
     # Poids ajustés pour une meilleure précision
     feature_weights = {
-        'brightness': 0.20,      # Augmenté - très important
-        'contrast': 0.15,        # Augmenté
-        'color_variance': 0.18,  # Stable
-        'edge_density': 0.18,    # Réduit légèrement
-        'texture_complexity': 0.12,  # Réduit
-        'dark_pixel_ratio': 0.12,    # Augmenté
-        'color_entropy': 0.05        # Réduit - moins fiable
+        'brightness': 0.18,      # Important
+        'contrast': 0.16,        # Important
+        'color_variance': 0.20,  # Plus important
+        'edge_density': 0.16,    # Important
+        'texture_complexity': 0.15,  # Plus important
+        'dark_pixel_ratio': 0.05,    # Encore moins important
+        'color_entropy': 0.05        # Stable
     }
-    
-    # Seuils optimisés basés sur l'expérience
+
+    # Seuils plus symétriques et moins stricts
     thresholds = load_rules_config() or {
-        'brightness_full_max': 100,      # Plus strict pour pleine
-        'brightness_empty_min': 140,     # Plus strict pour vide
-        'contrast_full_max': 25,         # Plus strict
-        'contrast_empty_min': 40,        # Plus strict
-        'color_variance_full_max': 600,  # Plus strict
-        'color_variance_empty_min': 1100, # Plus strict
-        'edge_density_full_max': 0.12,   # Plus strict
-        'edge_density_empty_min': 0.20,  # Plus strict
-        'dark_pixel_ratio_full_min': 0.40, # Plus strict
-        'dark_pixel_ratio_empty_max': 0.15  # Plus strict
+        'brightness_full_max': 110,      # Moins strict
+        'brightness_empty_min': 120,     # Moins strict
+        'contrast_full_max': 30,         # Moins strict
+        'contrast_empty_min': 35,        # Moins strict
+        'color_variance_full_max': 800,  # Moins strict
+        'color_variance_empty_min': 900, # Moins strict
+        'edge_density_full_max': 0.15,   # Moins strict
+        'edge_density_empty_min': 0.18,  # Moins strict
+        'dark_pixel_ratio_full_min': 0.35, # Moins strict
+        'dark_pixel_ratio_empty_max': 0.20  # Moins strict
     }
-    
+
     features = {
         'brightness': analysis['brightness'],
         'contrast': analysis['contrast'],
@@ -499,119 +606,105 @@ def predict_with_advanced_ai(analysis):
         'dark_pixel_ratio': analysis['dark_pixel_ratio'],
         'color_entropy': analysis['color_entropy']
     }
-    
+
     score_full = 0.0
     score_empty = 0.0
-    
-    # Règles pour "pleine" - plus strictes
-    # Luminosité : poubelle pleine = plus sombre
+
+    # Règles pour "pleine"
     if features['brightness'] < thresholds['brightness_full_max']:
         score_full += feature_weights['brightness']
-    elif features['brightness'] < thresholds['brightness_full_max'] + 20:  # Zone grise
+    elif features['brightness'] < thresholds['brightness_full_max'] + 20:
         score_full += feature_weights['brightness'] * 0.5
-    
-    # Contraste : poubelle pleine = moins de contraste
+
     if features['contrast'] < thresholds['contrast_full_max']:
         score_full += feature_weights['contrast']
     elif features['contrast'] < thresholds['contrast_full_max'] + 10:
         score_full += feature_weights['contrast'] * 0.5
-    
-    # Variance des couleurs : poubelle pleine = moins de variété
+
     if features['color_variance'] < thresholds['color_variance_full_max']:
         score_full += feature_weights['color_variance']
     elif features['color_variance'] < thresholds['color_variance_full_max'] + 200:
         score_full += feature_weights['color_variance'] * 0.5
-    
-    # Densité de contours : poubelle pleine = moins de détails
+
     if features['edge_density'] < thresholds['edge_density_full_max']:
         score_full += feature_weights['edge_density']
-    elif features['edge_density'] < thresholds['edge_density_full_max'] + 0.05:
+    elif features['edge_density'] < thresholds['edge_density_full_max'] + 0.04:
         score_full += feature_weights['edge_density'] * 0.5
-    
-    # Ratio de pixels sombres : poubelle pleine = plus de zones sombres
+
     if features['dark_pixel_ratio'] > thresholds['dark_pixel_ratio_full_min']:
         score_full += feature_weights['dark_pixel_ratio']
-    elif features['dark_pixel_ratio'] > thresholds['dark_pixel_ratio_full_min'] - 0.1:
+    elif features['dark_pixel_ratio'] > thresholds['dark_pixel_ratio_full_min'] - 0.08:
         score_full += feature_weights['dark_pixel_ratio'] * 0.5
-    
-    # Complexité de texture : poubelle pleine = texture plus simple
-    if features['texture_complexity'] < 0.5:
+
+    if features['texture_complexity'] < 0.55:
         score_full += feature_weights['texture_complexity']
-    
-    # Règles pour "vide" - plus strictes
-    # Luminosité : poubelle vide = plus claire
+
+    # Règles pour "vide"
     if features['brightness'] > thresholds['brightness_empty_min']:
         score_empty += feature_weights['brightness']
-    elif features['brightness'] > thresholds['brightness_empty_min'] - 20:  # Zone grise
+    elif features['brightness'] > thresholds['brightness_empty_min'] - 20:
         score_empty += feature_weights['brightness'] * 0.5
-    
-    # Contraste : poubelle vide = plus de contraste
+
     if features['contrast'] > thresholds['contrast_empty_min']:
         score_empty += feature_weights['contrast']
     elif features['contrast'] > thresholds['contrast_empty_min'] - 10:
         score_empty += feature_weights['contrast'] * 0.5
-    
-    # Variance des couleurs : poubelle vide = plus de variété
+
     if features['color_variance'] > thresholds['color_variance_empty_min']:
         score_empty += feature_weights['color_variance']
     elif features['color_variance'] > thresholds['color_variance_empty_min'] - 200:
         score_empty += feature_weights['color_variance'] * 0.5
-    
-    # Densité de contours : poubelle vide = plus de détails
+
     if features['edge_density'] > thresholds['edge_density_empty_min']:
         score_empty += feature_weights['edge_density']
-    elif features['edge_density'] > thresholds['edge_density_empty_min'] - 0.05:
+    elif features['edge_density'] > thresholds['edge_density_empty_min'] - 0.04:
         score_empty += feature_weights['edge_density'] * 0.5
-    
-    # Ratio de pixels sombres : poubelle vide = moins de zones sombres
+
     if features['dark_pixel_ratio'] < thresholds['dark_pixel_ratio_empty_max']:
         score_empty += feature_weights['dark_pixel_ratio']
-    elif features['dark_pixel_ratio'] < thresholds['dark_pixel_ratio_empty_max'] + 0.1:
+    elif features['dark_pixel_ratio'] < thresholds['dark_pixel_ratio_empty_max'] + 0.08:
         score_empty += feature_weights['dark_pixel_ratio'] * 0.5
-    
-    # Complexité de texture : poubelle vide = texture plus complexe
-    if features['texture_complexity'] > 0.6:
+
+    if features['texture_complexity'] > 0.60:
         score_empty += feature_weights['texture_complexity']
-    
-    # Règles combinées pour améliorer la précision
-    # Si plusieurs indicateurs pointent dans la même direction, bonus
+
+    # Bonus de cohérence
     indicators_full = 0
     indicators_empty = 0
-    
     if features['brightness'] < thresholds['brightness_full_max']:
         indicators_full += 1
     if features['contrast'] < thresholds['contrast_full_max']:
         indicators_full += 1
     if features['dark_pixel_ratio'] > thresholds['dark_pixel_ratio_full_min']:
         indicators_full += 1
-    
+    if features['color_variance'] < thresholds['color_variance_full_max']:
+        indicators_full += 1
     if features['brightness'] > thresholds['brightness_empty_min']:
         indicators_empty += 1
     if features['contrast'] > thresholds['contrast_empty_min']:
         indicators_empty += 1
     if features['dark_pixel_ratio'] < thresholds['dark_pixel_ratio_empty_max']:
         indicators_empty += 1
-    
-    # Bonus de cohérence
-    if indicators_full >= 2:
-        score_full += 0.1
-    if indicators_empty >= 2:
-        score_empty += 0.1
-    
+    if features['color_variance'] > thresholds['color_variance_empty_min']:
+        indicators_empty += 1
+    if indicators_full >= 3:
+        score_full += 0.12
+    if indicators_empty >= 3:
+        score_empty += 0.12
+
     # Normalisation et calcul de confiance
-    total_weight = sum(feature_weights.values()) + 0.2  # +0.2 pour les bonus
+    total_weight = sum(feature_weights.values()) + 0.12  # +0.12 pour les bonus
     score_full = min(0.95, score_full / total_weight)
     score_empty = min(0.95, score_empty / total_weight)
-    
-    # Décision avec seuil de confiance minimum
-    if score_full > score_empty and score_full > 0.3:  # Seuil minimum de confiance
+
+    # Décision avec seuil de confiance minimum plus bas
+    if score_full > score_empty and score_full > 0.25:
         confidence = score_full + (score_full - score_empty) * 0.3
         return 'full', min(0.95, confidence)
-    elif score_empty > score_full and score_empty > 0.3:
+    elif score_empty > score_full and score_empty > 0.25:
         confidence = score_empty + (score_empty - score_full) * 0.3
         return 'empty', min(0.95, confidence)
     else:
-        # Si pas assez de confiance, retourner "unknown"
         return 'unknown', max(score_full, score_empty)
 
 @app.route('/audit')
@@ -643,7 +736,424 @@ def audit():
             "image": img,
             "anomalies": anomalies
         })
-    return render_template('audit.html', audit_results=audit_results)
+    # Audit rapide des features : moyenne et écart-type par classe
+    features = ["brightness", "contrast", "color_variance", "edge_density", "texture_complexity", "dark_pixel_ratio", "color_entropy"]
+    stats = {}
+    for classe in ["full", "empty"]:
+        classe_imgs = [img for img in images if img.status == classe]
+        stats[classe] = {}
+        for feat in features:
+            vals = [getattr(img, feat, None) for img in classe_imgs if getattr(img, feat, None) is not None]
+            vals = [v for v in vals if v is not None]  # Filtre les None pour éviter l'erreur numpy
+            if vals:
+                stats[classe][feat] = {
+                    "mean": float(np.mean(vals)),
+                    "std": float(np.std(vals)),
+                    "count": len(vals)
+                }
+            else:
+                stats[classe][feat] = {"mean": None, "std": None, "count": 0}
+    return render_template('audit.html', audit_results=audit_results, feature_stats=stats)
+
+@app.route('/api/map_data')
+def api_map_data():
+    images = TrashImage.query.all()
+    data = []
+    for img in images:
+        data.append({
+            'id': img.id,
+            'latitude': img.latitude,
+            'longitude': img.longitude,
+            'status': img.status,
+            'ai_prediction': img.ai_prediction,
+            'upload_date': img.upload_date.strftime('%Y-%m-%d %H:%M'),
+            'location_name': img.location_name,
+            'filename': img.filename,
+            'url': url_for('uploaded_file', filename=img.filename)
+        })
+    return jsonify(data)
+
+KNN_MODEL_FILE = 'knn_model.pkl'
+RF_MODEL_FILE = 'rf_model.pkl'
+SVM_MODEL_FILE = 'svm_model.pkl'
+
+# Fonction d'extraction des features pour une image (utilise analyze_image_advanced)
+def extract_features_for_knn(image_path):
+    features = analyze_image_advanced(image_path)
+    if not features:
+        return None
+    return [
+        features['brightness'],
+        features['contrast'],
+        features['color_variance'],
+        features['edge_density'],
+        features['texture_complexity'],
+        features['dark_pixel_ratio'],
+        features['color_entropy']
+    ]
+
+def train_all_validated_ml():
+    X = []
+    y = []
+    # Utiliser toutes les images validées manuellement
+    validated_images = TrashImage.query.filter(TrashImage.status.in_(['full', 'empty']), TrashImage.ai_validated==True).all()
+    for img in validated_images:
+        filepath = os.path.join('uploads', img.filename)
+        if os.path.exists(filepath):
+            feats = extract_features_for_knn(filepath)
+            if feats:
+                X.append(feats)
+                y.append(0 if img.status == 'empty' else 1)
+    if not X:
+        print('Aucune donnée pour entraîner les modèles ML.')
+        return False
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    # KNN
+    knn = KNeighborsClassifier(n_neighbors=5)
+    knn.fit(X_scaled, y)
+    with open(KNN_MODEL_FILE, 'wb') as f:
+        pickle.dump(knn, f)
+    # Random Forest
+    rf = RandomForestClassifier(n_estimators=50, random_state=42)
+    rf.fit(X_scaled, y)
+    with open(RF_MODEL_FILE, 'wb') as f:
+        pickle.dump(rf, f)
+    # SVM (avec probas)
+    svm = SVC(probability=True, kernel='rbf', random_state=42)
+    svm.fit(X_scaled, y)
+    with open(SVM_MODEL_FILE, 'wb') as f:
+        pickle.dump(svm, f)
+    # Sauvegarde du scaler
+    with open('scaler_ml.pkl', 'wb') as f:
+        pickle.dump(scaler, f)
+    print(f'Modèles ML entraînés et sauvegardés ({len(X)} images validées manuellement).')
+    return True
+
+@app.route('/train_all_validated_ml')
+def train_all_validated_ml_route():
+    ok = train_all_validated_ml()
+    if ok:
+        flash('Modèles ML (KNN, RF, SVM) entraînés sur toutes les images validées manuellement avec succès.')
+    else:
+        flash('Erreur lors de l\'entraînement des modèles ML (pas assez de données validées).')
+    return redirect(url_for('rules'))
+
+@app.route('/reset_rules_knn')
+def reset_rules_knn():
+    import numpy as np
+    # Collecte des features par classe
+    clean_dir = os.path.join(app.config['TRAINING_FOLDER'], 'with_label', 'clean')
+    dirty_dir = os.path.join(app.config['TRAINING_FOLDER'], 'with_label', 'dirty')
+    clean_feats = []
+    dirty_feats = []
+    for img_file in glob.glob(os.path.join(clean_dir, '*')):
+        if img_file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
+            feats = extract_features_for_knn(img_file)
+            if feats:
+                clean_feats.append(feats)
+    for img_file in glob.glob(os.path.join(dirty_dir, '*')):
+        if img_file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
+            feats = extract_features_for_knn(img_file)
+            if feats:
+                dirty_feats.append(feats)
+    if not clean_feats or not dirty_feats:
+        flash("Pas assez de données pour réinitialiser les règles.")
+        return redirect(url_for('rules'))
+    clean_feats = np.array(clean_feats)
+    dirty_feats = np.array(dirty_feats)
+    # Calcul des seuils optimaux (moyenne entre les deux classes)
+    thresholds = {
+        'brightness_full_max': float(np.max(dirty_feats[:,0])),
+        'brightness_empty_min': float(np.min(clean_feats[:,0])),
+        'contrast_full_max': float(np.max(dirty_feats[:,1])),
+        'contrast_empty_min': float(np.min(clean_feats[:,1])),
+        'color_variance_full_max': float(np.max(dirty_feats[:,2])),
+        'color_variance_empty_min': float(np.min(clean_feats[:,2])),
+        'edge_density_full_max': float(np.max(dirty_feats[:,3])),
+        'edge_density_empty_min': float(np.min(clean_feats[:,3])),
+        'dark_pixel_ratio_full_min': float(np.min(dirty_feats[:,5])),
+        'dark_pixel_ratio_empty_max': float(np.max(clean_feats[:,5]))
+    }
+    save_rules_config(thresholds)
+    flash("Règles réinitialisées selon les statistiques du KNN.")
+    return redirect(url_for('rules'))
+
+@app.route('/resimuler')
+def resimuler():
+    images = TrashImage.query.all()
+    count = 0
+    for img in images:
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], img.filename)
+        if os.path.exists(filepath):
+            analysis = analyze_image_advanced(filepath)
+            if analysis:
+                rule_prediction, rule_confidence = predict_with_advanced_ai(analysis)
+                feats = [
+                    analysis['brightness'],
+                    analysis['contrast'],
+                    analysis['color_variance'],
+                    analysis['edge_density'],
+                    analysis['texture_complexity'],
+                    analysis['dark_pixel_ratio'],
+                    analysis['color_entropy']
+                ]
+                knn_pred = rf_pred = svm_pred = None
+                knn_conf = rf_conf = svm_conf = None
+                try:
+                    scaler = None
+                    if os.path.exists('scaler_ml.pkl'):
+                        with open('scaler_ml.pkl', 'rb') as f:
+                            scaler = pickle.load(f)
+                    feats_scaled = scaler.transform([feats]) if scaler else [feats]
+                    if os.path.exists(KNN_MODEL_FILE):
+                        with open(KNN_MODEL_FILE, 'rb') as f:
+                            knn = pickle.load(f)
+                        proba = knn.predict_proba(feats_scaled)[0]
+                        pred = knn.predict(feats_scaled)[0]
+                        knn_pred = 'empty' if pred == 0 else 'full'
+                        knn_conf = float(np.max(proba))
+                    if os.path.exists(RF_MODEL_FILE):
+                        with open(RF_MODEL_FILE, 'rb') as f:
+                            rf = pickle.load(f)
+                        proba = rf.predict_proba(feats_scaled)[0]
+                        pred = rf.predict(feats_scaled)[0]
+                        rf_pred = 'empty' if pred == 0 else 'full'
+                        rf_conf = float(np.max(proba))
+                    if os.path.exists(SVM_MODEL_FILE):
+                        with open(SVM_MODEL_FILE, 'rb') as f:
+                            svm = pickle.load(f)
+                        proba = svm.predict_proba(feats_scaled)[0]
+                        pred = svm.predict(feats_scaled)[0]
+                        svm_pred = 'empty' if pred == 0 else 'full'
+                        svm_conf = float(np.max(proba))
+                except Exception as e:
+                    print(f"Erreur prédiction ML (resimuler) : {e}")
+                votes = [p for p in [knn_pred, rf_pred, svm_pred] if p in ['full', 'empty']]
+                if votes:
+                    ml_vote = max(set(votes), key=votes.count)
+                else:
+                    ml_vote = None
+                for k, v in analysis.items():
+                    setattr(img, k, v)
+                img.ai_prediction = rule_prediction
+                img.ai_confidence = rule_confidence
+                img.knn_prediction = knn_pred
+                img.knn_confidence = knn_conf
+                img.rf_prediction = rf_pred
+                img.rf_confidence = rf_conf
+                img.svm_prediction = svm_pred
+                img.svm_confidence = svm_conf
+                img.ml_vote = ml_vote
+                img.status = 'pending'
+                count += 1
+    db.session.commit()
+    flash(f"Simulation relancée sur {count} images.")
+    return redirect(url_for('rules'))
+
+@app.route('/resimuler_image/<int:image_id>')
+def resimuler_image(image_id):
+    img = TrashImage.query.get_or_404(image_id)
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], img.filename)
+    if os.path.exists(filepath):
+        analysis = analyze_image_advanced(filepath)
+        if analysis:
+            rule_prediction, rule_confidence = predict_with_advanced_ai(analysis)
+            feats = [
+                analysis['brightness'],
+                analysis['contrast'],
+                analysis['color_variance'],
+                analysis['edge_density'],
+                analysis['texture_complexity'],
+                analysis['dark_pixel_ratio'],
+                analysis['color_entropy']
+            ]
+            knn_pred = rf_pred = svm_pred = None
+            knn_conf = rf_conf = svm_conf = None
+            try:
+                scaler = None
+                if os.path.exists('scaler_ml.pkl'):
+                    with open('scaler_ml.pkl', 'rb') as f:
+                        scaler = pickle.load(f)
+                feats_scaled = scaler.transform([feats]) if scaler else [feats]
+                if os.path.exists(KNN_MODEL_FILE):
+                    with open(KNN_MODEL_FILE, 'rb') as f:
+                        knn = pickle.load(f)
+                    proba = knn.predict_proba(feats_scaled)[0]
+                    pred = knn.predict(feats_scaled)[0]
+                    knn_pred = 'empty' if pred == 0 else 'full'
+                    knn_conf = float(np.max(proba))
+                if os.path.exists(RF_MODEL_FILE):
+                    with open(RF_MODEL_FILE, 'rb') as f:
+                        rf = pickle.load(f)
+                    proba = rf.predict_proba(feats_scaled)[0]
+                    pred = rf.predict(feats_scaled)[0]
+                    rf_pred = 'empty' if pred == 0 else 'full'
+                    rf_conf = float(np.max(proba))
+                if os.path.exists(SVM_MODEL_FILE):
+                    with open(SVM_MODEL_FILE, 'rb') as f:
+                        svm = pickle.load(f)
+                    proba = svm.predict_proba(feats_scaled)[0]
+                    pred = svm.predict(feats_scaled)[0]
+                    svm_pred = 'empty' if pred == 0 else 'full'
+                    svm_conf = float(np.max(proba))
+            except Exception as e:
+                print(f"Erreur prédiction ML (resimuler_image) : {e}")
+            votes = [p for p in [knn_pred, rf_pred, svm_pred] if p in ['full', 'empty']]
+            if votes:
+                ml_vote = max(set(votes), key=votes.count)
+            else:
+                ml_vote = None
+            for k, v in analysis.items():
+                setattr(img, k, v)
+            img.ai_prediction = rule_prediction
+            img.ai_confidence = rule_confidence
+            img.knn_prediction = knn_pred
+            img.knn_confidence = knn_conf
+            img.rf_prediction = rf_pred
+            img.rf_confidence = rf_conf
+            img.svm_prediction = svm_pred
+            img.svm_confidence = svm_conf
+            img.ml_vote = ml_vote
+            img.status = 'pending'
+            db.session.commit()
+            flash("Analyse IA/ML relancée pour cette image.")
+    else:
+        flash("Fichier image introuvable.")
+    return redirect(url_for('gallery'))
+
+@app.route('/validate_ajax/<int:image_id>', methods=['POST'])
+def validate_prediction_ajax(image_id):
+    image = TrashImage.query.get_or_404(image_id)
+    user_status = request.form.get('status')
+    if user_status in ['full', 'empty']:
+        image.status = user_status
+        image.manual_status = user_status
+        image.ai_validated = True
+        image.ai_correct = (image.ai_prediction == user_status)
+        image.ml_correct = (image.ml_vote == user_status)
+        db.session.commit()
+        # Préparer la réponse JSON pour mise à jour dynamique
+        badge = ''
+        if user_status == 'full':
+            badge = '<span class="badge bg-danger"><i class="fas fa-exclamation-triangle me-1"></i>Pleine</span>'
+        elif user_status == 'empty':
+            badge = '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Vide</span>'
+        ia_status = ''
+        if image.ml_correct:
+            ia_status = '<small class="text-success"><i class="fas fa-check-circle me-1"></i>IA correcte</small>'
+        else:
+            ia_status = '<small class="text-danger"><i class="fas fa-times-circle me-1"></i>IA incorrecte</small>'
+        return jsonify({
+            'success': True,
+            'status': user_status,
+            'badge_html': badge,
+            'ia_status_html': ia_status,
+            'ml_vote': image.ml_vote,
+            'ai_prediction': image.ai_prediction,
+            'ai_confidence': image.ai_confidence,
+            'knn_prediction': image.knn_prediction,
+            'rf_prediction': image.rf_prediction,
+            'svm_prediction': image.svm_prediction
+        })
+    else:
+        return jsonify({'success': False, 'error': 'Statut invalide'})
+
+@app.route('/resimuler_image_ajax/<int:image_id>', methods=['POST'])
+def resimuler_image_ajax(image_id):
+    img = TrashImage.query.get_or_404(image_id)
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], img.filename)
+    if os.path.exists(filepath):
+        analysis = analyze_image_advanced(filepath)
+        if analysis:
+            rule_prediction, rule_confidence = predict_with_advanced_ai(analysis)
+            feats = [
+                analysis['brightness'],
+                analysis['contrast'],
+                analysis['color_variance'],
+                analysis['edge_density'],
+                analysis['texture_complexity'],
+                analysis['dark_pixel_ratio'],
+                analysis['color_entropy']
+            ]
+            knn_pred = rf_pred = svm_pred = None
+            knn_conf = rf_conf = svm_conf = None
+            try:
+                scaler = None
+                if os.path.exists('scaler_ml.pkl'):
+                    with open('scaler_ml.pkl', 'rb') as f:
+                        scaler = pickle.load(f)
+                feats_scaled = scaler.transform([feats]) if scaler else [feats]
+                if os.path.exists(KNN_MODEL_FILE):
+                    with open(KNN_MODEL_FILE, 'rb') as f:
+                        knn = pickle.load(f)
+                    proba = knn.predict_proba(feats_scaled)[0]
+                    pred = knn.predict(feats_scaled)[0]
+                    knn_pred = 'empty' if pred == 0 else 'full'
+                    knn_conf = float(np.max(proba))
+                if os.path.exists(RF_MODEL_FILE):
+                    with open(RF_MODEL_FILE, 'rb') as f:
+                        rf = pickle.load(f)
+                    proba = rf.predict_proba(feats_scaled)[0]
+                    pred = rf.predict(feats_scaled)[0]
+                    rf_pred = 'empty' if pred == 0 else 'full'
+                    rf_conf = float(np.max(proba))
+                if os.path.exists(SVM_MODEL_FILE):
+                    with open(SVM_MODEL_FILE, 'rb') as f:
+                        svm = pickle.load(f)
+                    proba = svm.predict_proba(feats_scaled)[0]
+                    pred = svm.predict(feats_scaled)[0]
+                    svm_pred = 'empty' if pred == 0 else 'full'
+                    svm_conf = float(np.max(proba))
+            except Exception as e:
+                print(f"Erreur prédiction ML (resimuler_image_ajax) : {e}")
+            votes = [p for p in [knn_pred, rf_pred, svm_pred] if p in ['full', 'empty']]
+            if votes:
+                ml_vote = max(set(votes), key=votes.count)
+            else:
+                ml_vote = None
+            for k, v in analysis.items():
+                setattr(img, k, v)
+            img.ai_prediction = rule_prediction
+            img.ai_confidence = rule_confidence
+            img.knn_prediction = knn_pred
+            img.knn_confidence = knn_conf
+            img.rf_prediction = rf_pred
+            img.rf_confidence = rf_conf
+            img.svm_prediction = svm_pred
+            img.svm_confidence = svm_conf
+            img.ml_vote = ml_vote
+            img.status = 'pending'
+            db.session.commit()
+            # Préparer la réponse JSON pour mise à jour dynamique
+            badge = ''
+            if img.status == 'full':
+                badge = '<span class="badge bg-danger"><i class="fas fa-exclamation-triangle me-1"></i>Pleine</span>'
+            elif img.status == 'empty':
+                badge = '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Vide</span>'
+            elif img.ai_prediction == 'unknown':
+                badge = '<span class="badge bg-secondary"><i class="fas fa-question-circle me-1"></i>Incertaine</span>'
+            else:
+                badge = '<span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>En attente</span>'
+            ia_status = ''
+            if img.ai_validated:
+                if img.ml_correct:
+                    ia_status = '<small class="text-success"><i class="fas fa-check-circle me-1"></i>IA correcte</small>'
+                else:
+                    ia_status = '<small class="text-danger"><i class="fas fa-times-circle me-1"></i>IA incorrecte</small>'
+            return jsonify({
+                'success': True,
+                'status': img.status,
+                'badge_html': badge,
+                'ia_status_html': ia_status,
+                'ml_vote': img.ml_vote,
+                'ai_prediction': img.ai_prediction,
+                'ai_confidence': img.ai_confidence,
+                'knn_prediction': img.knn_prediction,
+                'rf_prediction': img.rf_prediction,
+                'svm_prediction': img.svm_prediction
+            })
+    return jsonify({'success': False, 'error': 'Fichier image introuvable ou analyse impossible.'})
 
 if __name__ == '__main__':
     with app.app_context():
