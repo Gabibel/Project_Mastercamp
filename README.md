@@ -43,7 +43,7 @@ SmartTrash Monitor est une plateforme web intelligente de suivi de l'état des p
 
 ## 🛠️ Technologies Utilisées
 
-- **Backend** : Python, Flask, SQLAlchemy, SQLite, Pillow, OpenCV, NumPy, Matplotlib
+- **Backend** : Python, Flask, SQLAlchemy, SQLite, Pillow, OpenCV, NumPy, Matplotlib,uçnznezz_yerqz_e_quezq_
 - **Frontend** : HTML/CSS, Bootstrap, JavaScript, Chart.js, Leaflet.js
 
 ## 📦 Installation
