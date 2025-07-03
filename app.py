@@ -715,6 +715,7 @@ def predict_with_advanced_ai(analysis):
     if 'spatial_distribution' in analysis and analysis['spatial_distribution'] < 0.06:
         score_empty += 0.07
 
+    
     # Bonus de cohérence
     indicators_full = 0
     indicators_empty = 0
@@ -745,10 +746,10 @@ def predict_with_advanced_ai(analysis):
     score_empty = min(0.95, score_empty / total_weight)
 
     # Décision avec seuil de confiance minimum plus bas
-    if score_full > score_empty and score_full > 0.18:
+    if score_full > score_empty and score_full > 0.12:
         confidence = score_full + (score_full - score_empty) * 0.3
         return 'full', min(0.95, confidence)
-    elif score_empty > score_full and score_empty > 0.25:
+    elif score_empty > score_full and score_empty > 0.18:
         confidence = score_empty + (score_empty - score_full) * 0.3
         return 'empty', min(0.95, confidence)
     else:
