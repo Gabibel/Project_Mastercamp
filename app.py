@@ -259,12 +259,32 @@ def upload():
         if 'file' not in request.files:
             flash('Aucun fichier sélectionné')
             return redirect(request.url)
-        
+
         files = request.files.getlist('file')
         if not files or all(f.filename == '' for f in files):
             flash('Aucun fichier sélectionné')
             return redirect(request.url)
-        
+
+        # Vérification des champs obligatoires
+        latitude = request.form.get('latitude', type=float)
+        longitude = request.form.get('longitude', type=float)
+        location_name = request.form.get('location_name')
+        photo_datetime_str = request.form.get('photo_datetime')
+
+        missing_fields = []
+        if latitude is None:
+            missing_fields.append("Latitude")
+        if longitude is None:
+            missing_fields.append("Longitude")
+        if not location_name:
+            missing_fields.append("Nom du lieu")
+        if not photo_datetime_str:
+            missing_fields.append("Date/heure de la photo")
+
+        if missing_fields:
+            flash("Champs obligatoires manquants : " + ", ".join(missing_fields))
+            return redirect(request.url)
+
         allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'bmp'}
         results = []
         for file in files:
@@ -291,36 +311,25 @@ def upload():
                     img.save(filepath, format="JPEG", quality=80, optimize=True)
             except Exception as e:
                 print(f"Erreur compression image : {e}")
-            # Récupérer la localisation du formulaire
-            latitude = request.form.get('latitude', type=float)
-            longitude = request.form.get('longitude', type=float)
-            location_name = request.form.get('location_name', default='Paris')
-            # Récupérer la date/heure de la photo
-            photo_datetime_str = request.form.get('photo_datetime')
-            if photo_datetime_str:
-                try:
-                    # Format attendu : 'YYYY-MM-DDTHH:MM'
-                    photo_datetime = datetime.strptime(photo_datetime_str, '%Y-%m-%dT%H:%M')
-                    # On force le fuseau UTC pour cohérence
-                    photo_datetime = photo_datetime.replace(tzinfo=timezone.utc)
-                except Exception as e:
-                    print(f"Erreur parsing date/heure : {e}")
-                    photo_datetime = datetime.now(timezone.utc)
-            else:
+            # Conversion de la date/heure
+            try:
+                photo_datetime = datetime.strptime(photo_datetime_str, '%Y-%m-%dT%H:%M')
+                photo_datetime = photo_datetime.replace(tzinfo=timezone.utc)
+            except Exception as e:
+                print(f"Erreur parsing date/heure : {e}")
                 photo_datetime = datetime.now(timezone.utc)
             # Création entrée TrashImage (status pending, sans features)
             trash_image = TrashImage(
                 filename=filename,
                 original_filename=file.filename,
                 status='pending',
-                latitude=latitude if latitude else 48.8566,
-                longitude=longitude if longitude else 2.3522,
-                location_name=location_name if location_name else 'Paris',
+                latitude=latitude,
+                longitude=longitude,
+                location_name=location_name,
                 upload_date=photo_datetime,
             )
             db.session.add(trash_image)
             db.session.commit()
-            # Lancer l'analyse en thread
             threading.Thread(target=async_analyze_and_update, args=(trash_image.id, filepath)).start()
             results.append(f"<b>{file.filename}</b> : uploadé, analyse en cours...")
         if results:
@@ -1192,4 +1201,4 @@ def resimuler_image_ajax(image_id):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True) 
+    app.run(debug=True)
