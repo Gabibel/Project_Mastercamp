@@ -581,9 +581,8 @@ def predict_with_advanced_ai(analysis):
     if analysis['texture_complexity'] < 0.18 and analysis['edge_density'] < 0.07:
         return 'unknown', 0.0
 
-    # Poids ajustés pour une meilleure précision
     feature_weights = {
-        'brightness': 0.08,
+        'brightness': 0.04,
         'contrast': 0.13,
         'color_variance': 0.13,
         'edge_density': 0.32,
