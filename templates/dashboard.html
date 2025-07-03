@@ -108,7 +108,7 @@
         </div>
     </div>
     
-    <!-- Comparaison des modèles -->
+    <!-- Comparaison des modèles IA -->
     <div class="row mb-5">
         <div class="col-12">
             <div class="card">
@@ -119,7 +119,10 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>Modèle</th>
-                                    <th>Précision</th>
+                                    <th>Accuracy</th>
+                                    <th>Recall</th>
+                                    <th>Precision</th>
+                                    <th>F1-score</th>
                                     <th>Corrects</th>
                                     <th>Total</th>
                                     <th>Indécis</th>
@@ -129,6 +132,9 @@
                                 <tr>
                                     <td><i class="fas fa-user-friends text-primary me-1"></i>KNN</td>
                                     <td>{{ (100 * knn_correct / knn_total)|round(1) if knn_total else 'N/A' }}%</td>
+                                    <td>{{ (100 * knn_recall)|round(1) if knn_total else 'N/A' }}%</td>
+                                    <td>{{ (100 * knn_precision)|round(1) if knn_total else 'N/A' }}%</td>
+                                    <td>{{ (100 * knn_f1)|round(1) if knn_total else 'N/A' }}%</td>
                                     <td>{{ knn_correct }}</td>
                                     <td>{{ knn_total }}</td>
                                     <td>-</td>
@@ -136,6 +142,9 @@
                                 <tr>
                                     <td><i class="fas fa-tree text-success me-1"></i>Random Forest</td>
                                     <td>{{ (100 * rf_correct / rf_total)|round(1) if rf_total else 'N/A' }}%</td>
+                                    <td>{{ (100 * rf_recall)|round(1) if rf_total else 'N/A' }}%</td>
+                                    <td>{{ (100 * rf_precision)|round(1) if rf_total else 'N/A' }}%</td>
+                                    <td>{{ (100 * rf_f1)|round(1) if rf_total else 'N/A' }}%</td>
                                     <td>{{ rf_correct }}</td>
                                     <td>{{ rf_total }}</td>
                                     <td>-</td>
@@ -143,6 +152,9 @@
                                 <tr>
                                     <td><i class="fas fa-wave-square text-warning me-1"></i>SVM</td>
                                     <td>{{ (100 * svm_correct / svm_total)|round(1) if svm_total else 'N/A' }}%</td>
+                                    <td>{{ (100 * svm_recall)|round(1) if svm_total else 'N/A' }}%</td>
+                                    <td>{{ (100 * svm_precision)|round(1) if svm_total else 'N/A' }}%</td>
+                                    <td>{{ (100 * svm_f1)|round(1) if svm_total else 'N/A' }}%</td>
                                     <td>{{ svm_correct }}</td>
                                     <td>{{ svm_total }}</td>
                                     <td>-</td>
@@ -152,6 +164,27 @@
                                     <td>
                                         {% if rules_total > 0 %}
                                             {{ (100 * rules_correct / rules_total)|round(1) }}%
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if rules_total > 0 %}
+                                            {{ (100 * rules_recall)|round(1) }}%
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if rules_total > 0 %}
+                                            {{ (100 * rules_precision)|round(1) }}%
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if rules_total > 0 %}
+                                            {{ (100 * rules_f1)|round(1) }}%
                                         {% else %}
                                             N/A
                                         {% endif %}
@@ -534,4 +567,4 @@ document.addEventListener('DOMContentLoaded', function() {
     border-radius: 10px 10px 0 0 !important;
 }
 </style>
-{% endblock %} 
+{% endblock %}

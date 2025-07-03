@@ -22,6 +22,7 @@ from sklearn.svm import SVC
 import sqlite3
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import resample
+from sklearn.metrics import precision_score, recall_score, f1_score
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'votre_cle_secrete_ici'
@@ -436,11 +437,47 @@ def dashboard():
     svm_total = sum(1 for img in validated_images if img.svm_prediction in ['full', 'empty'])
     rules_total = len(validated_images)
     rules_indecis = sum(1 for img in validated_images if img.ai_prediction not in ['full', 'empty'])
-    # Compter les images d'entraînement dans les nouveaux dossiers
-    empty_training = len([f for f in os.listdir(os.path.join(app.config['TRAINING_FOLDER'], 'with_label', 'clean')) 
-                         if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))])
-    full_training = len([f for f in os.listdir(os.path.join(app.config['TRAINING_FOLDER'], 'with_label', 'dirty')) 
-                        if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))])
+    
+    # Listes des statuts réels et prédits pour chaque modèle
+    y_true = [img.manual_status for img in validated_images if img.manual_status in ['full', 'empty']]
+
+    # KNN
+    knn_preds = [img.knn_prediction for img in validated_images if img.knn_prediction in ['full', 'empty']]
+    knn_y_true = [img.manual_status for img in validated_images if img.knn_prediction in ['full', 'empty']]
+    knn_precision = precision_score(knn_y_true, knn_preds, pos_label='full', zero_division=0) if knn_preds else 0
+    knn_recall = recall_score(knn_y_true, knn_preds, pos_label='full', zero_division=0) if knn_preds else 0
+    knn_f1 = f1_score(knn_y_true, knn_preds, pos_label='full', zero_division=0) if knn_preds else 0
+
+    # Random Forest
+    rf_preds = [img.rf_prediction for img in validated_images if img.rf_prediction in ['full', 'empty']]
+    rf_y_true = [img.manual_status for img in validated_images if img.rf_prediction in ['full', 'empty']]
+    rf_precision = precision_score(rf_y_true, rf_preds, pos_label='full', zero_division=0) if rf_preds else 0
+    rf_recall = recall_score(rf_y_true, rf_preds, pos_label='full', zero_division=0) if rf_preds else 0
+    rf_f1 = f1_score(rf_y_true, rf_preds, pos_label='full', zero_division=0) if rf_preds else 0
+
+    # SVM
+    svm_preds = [img.svm_prediction for img in validated_images if img.svm_prediction in ['full', 'empty']]
+    svm_y_true = [img.manual_status for img in validated_images if img.svm_prediction in ['full', 'empty']]
+    svm_precision = precision_score(svm_y_true, svm_preds, pos_label='full', zero_division=0) if svm_preds else 0
+    svm_recall = recall_score(svm_y_true, svm_preds, pos_label='full', zero_division=0) if svm_preds else 0
+    svm_f1 = f1_score(svm_y_true, svm_preds, pos_label='full', zero_division=0) if svm_preds else 0
+
+    # Règles
+    rules_preds = [img.ai_prediction for img in validated_images if img.ai_prediction in ['full', 'empty']]
+    rules_y_true = [img.manual_status for img in validated_images if img.ai_prediction in ['full', 'empty']]
+    rules_precision = precision_score(rules_y_true, rules_preds, pos_label='full', zero_division=0) if rules_preds else 0
+    rules_recall = recall_score(rules_y_true, rules_preds, pos_label='full', zero_division=0) if rules_preds else 0
+    rules_f1 = f1_score(rules_y_true, rules_preds, pos_label='full', zero_division=0) if rules_preds else 0
+    
+    empty_training = 0
+    full_training = 0
+    train_clean_dir = os.path.join(app.config['TRAINING_FOLDER'], 'with_label', 'clean')
+    train_dirty_dir = os.path.join(app.config['TRAINING_FOLDER'], 'with_label', 'dirty')
+    if os.path.exists(train_clean_dir):
+        empty_training = len([f for f in os.listdir(train_clean_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif'))])
+    if os.path.exists(train_dirty_dir):
+        full_training = len([f for f in os.listdir(train_dirty_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif'))])
+    
     return render_template('dashboard.html',
                          total_images=total_images,
                          full_images=full_images,
@@ -462,7 +499,12 @@ def dashboard():
                          knn_correct=knn_correct, knn_total=knn_total,
                          rf_correct=rf_correct, rf_total=rf_total,
                          svm_correct=svm_correct, svm_total=svm_total,
-                         rules_correct=rules_correct, rules_total=rules_total, rules_indecis=rules_indecis)
+                         rules_correct=rules_correct, rules_total=rules_total, rules_indecis=rules_indecis,
+                         # Métriques détaillées par modèle
+                         knn_precision=knn_precision, knn_recall=knn_recall, knn_f1=knn_f1,
+                         rf_precision=rf_precision, rf_recall=rf_recall, rf_f1=rf_f1,
+                         svm_precision=svm_precision, svm_recall=svm_recall, svm_f1=svm_f1,
+                         rules_precision=rules_precision, rules_recall=rules_recall, rules_f1=rules_f1)
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
