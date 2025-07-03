@@ -146,7 +146,7 @@ Voir `requirements.txt` pour le backend. Frontend : Bootstrap, Chart.js, Leaflet
 
 ## 👥 Auteurs
 
-- [Votre nom]
+- Jérôme BALTHAZAR - Julien BLANCHARD - Jacky SHANG - Henri SU - Gabriel TANNOUS - Angela TCHING
 - Projet Mastercamp Data 2024
 
 ---
