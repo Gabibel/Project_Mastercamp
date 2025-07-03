@@ -544,18 +544,17 @@ def static_graph_contrast():
 
 @app.route('/rules', methods=['GET', 'POST'])
 def rules():
-    # Valeurs par défaut optimisées
     default_thresholds = {
-        'brightness_full_max': 100,      # Plus strict pour pleine
-        'brightness_empty_min': 140,     # Plus strict pour vide
-        'contrast_full_max': 25,         # Plus strict
-        'contrast_empty_min': 40,        # Plus strict
-        'color_variance_full_max': 600,  # Plus strict
-        'color_variance_empty_min': 1100, # Plus strict
-        'edge_density_full_max': 0.12,   # Plus strict
-        'edge_density_empty_min': 0.20,  # Plus strict
-        'dark_pixel_ratio_full_min': 0.40, # Plus strict
-        'dark_pixel_ratio_empty_max': 0.15  # Plus strict
+        'brightness_full_max': 130,
+        'brightness_empty_min': 120,
+        'contrast_full_max': 35,
+        'contrast_empty_min': 30,
+        'color_variance_full_max': 900,
+        'color_variance_empty_min': 900,
+        'edge_density_full_max': 0.18,
+        'edge_density_empty_min': 0.16,
+        'dark_pixel_ratio_full_min': 0.18,
+        'dark_pixel_ratio_empty_max': 0.22
     }
     thresholds = load_rules_config() or default_thresholds
     if request.method == 'POST':
@@ -677,6 +676,44 @@ def predict_with_advanced_ai(analysis):
 
     if features['texture_complexity'] > 0.60:
         score_empty += feature_weights['texture_complexity']
+
+    
+    # 1. Couleur dominante sombre + contours élevés => pleine
+    avg_color = (analysis['avg_color_r'] + analysis['avg_color_g'] + analysis['avg_color_b']) / 3
+    if avg_color < 90 and features['edge_density'] > 0.15:
+        score_full += 0.10
+
+    # 2. Texture ET variance élevées => pleine
+    if features['texture_complexity'] > 0.5 and features['color_variance'] > 1200:
+        score_full += 0.10
+
+    # 3. Texture ET variance faibles => vide ou fermée
+    if features['texture_complexity'] < 0.2 and features['color_variance'] < 600:
+        score_empty += 0.08
+
+    # 4. Luminosité faible ET beaucoup de pixels sombres => pleine
+    if features['brightness'] < 110 and features['dark_pixel_ratio'] > 0.25:
+        score_full += 0.10
+
+    # 5. Luminosité forte ET peu de pixels sombres => vide
+    if features['brightness'] > 140 and features['dark_pixel_ratio'] < 0.10:
+        score_empty += 0.10
+
+    # 6. Entropie très faible => vide ou fermée
+    if features['color_entropy'] < 4.0:
+        score_empty += 0.08
+
+    # 7. Entropie très élevée => pleine
+    if features['color_entropy'] > 6.0:
+        score_full += 0.08
+
+    # 8. Distribution spatiale élevée => pleine
+    if 'spatial_distribution' in analysis and analysis['spatial_distribution'] > 0.18:
+        score_full += 0.07
+
+    # 9. Distribution spatiale très faible => vide ou fermée
+    if 'spatial_distribution' in analysis and analysis['spatial_distribution'] < 0.06:
+        score_empty += 0.07
 
     # Bonus de cohérence
     indicators_full = 0
