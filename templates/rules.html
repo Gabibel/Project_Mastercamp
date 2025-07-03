@@ -17,9 +17,7 @@
         <div class="mt-4">
             <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Sauvegarder les règles</button>
             <a href="{{ url_for('dashboard') }}" class="btn btn-secondary ms-2">Retour au dashboard</a>
-            <a href="{{ url_for('train_all_validated_ml_route') }}" class="btn btn-outline-info ms-2">Réentraîner sur toutes les images validées</a>
-            <a href="{{ url_for('reset_rules_knn') }}" class="btn btn-outline-warning ms-2">Réinitialiser selon le KNN</a>
-            <a href="{{ url_for('resimuler') }}" class="btn btn-outline-danger ms-2"><i class="fas fa-redo-alt me-2"></i>Resimuler la simulation</a>
+            <a href="{{ url_for('train_all_validated_ml_route') }}" class="btn btn-outline-info ms-2">Entraîner avec les data dans train</a>
         </div>
     </form>
     {% with messages = get_flashed_messages() %}

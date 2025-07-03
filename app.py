@@ -21,6 +21,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 import sqlite3
 from sklearn.preprocessing import StandardScaler
+from sklearn.utils import resample
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'votre_cle_secrete_ici'
@@ -574,27 +575,27 @@ def predict_with_advanced_ai(analysis):
 
     # Poids ajustés pour une meilleure précision
     feature_weights = {
-        'brightness': 0.18,      # Important
-        'contrast': 0.16,        # Important
-        'color_variance': 0.20,  # Plus important
-        'edge_density': 0.16,    # Important
-        'texture_complexity': 0.15,  # Plus important
-        'dark_pixel_ratio': 0.05,    # Encore moins important
-        'color_entropy': 0.05        # Stable
+        'brightness': 0.08,
+        'contrast': 0.13,
+        'color_variance': 0.13,
+        'edge_density': 0.32,
+        'texture_complexity': 0.20,
+        'dark_pixel_ratio': 0.06,
+        'color_entropy': 0.13
     }
 
-    # Seuils plus symétriques et moins stricts
+    # Seuils plus symétriques et moins stricts (ajustés)
     thresholds = load_rules_config() or {
-        'brightness_full_max': 110,      # Moins strict
-        'brightness_empty_min': 120,     # Moins strict
-        'contrast_full_max': 30,         # Moins strict
-        'contrast_empty_min': 35,        # Moins strict
-        'color_variance_full_max': 800,  # Moins strict
-        'color_variance_empty_min': 900, # Moins strict
-        'edge_density_full_max': 0.15,   # Moins strict
-        'edge_density_empty_min': 0.18,  # Moins strict
-        'dark_pixel_ratio_full_min': 0.35, # Moins strict
-        'dark_pixel_ratio_empty_max': 0.20  # Moins strict
+        'brightness_full_max': 160,
+        'brightness_empty_min': 110,
+        'contrast_full_max': 55,
+        'contrast_empty_min': 28,
+        'color_variance_full_max': 1500,
+        'color_variance_empty_min': 700,
+        'edge_density_full_max': 0.35,
+        'edge_density_empty_min': 0.10,
+        'dark_pixel_ratio_full_min': 0.10,
+        'dark_pixel_ratio_empty_max': 0.32
     }
 
     features = {
@@ -687,18 +688,18 @@ def predict_with_advanced_ai(analysis):
         indicators_empty += 1
     if features['color_variance'] > thresholds['color_variance_empty_min']:
         indicators_empty += 1
-    if indicators_full >= 3:
-        score_full += 0.12
-    if indicators_empty >= 3:
-        score_empty += 0.12
+    if indicators_full >= 4:
+        score_full += 0.18
+    if indicators_empty >= 4:
+        score_empty += 0.18
 
     # Normalisation et calcul de confiance
-    total_weight = sum(feature_weights.values()) + 0.12  # +0.12 pour les bonus
+    total_weight = sum(feature_weights.values()) + 0.18  # +0.18 pour les bonus
     score_full = min(0.95, score_full / total_weight)
     score_empty = min(0.95, score_empty / total_weight)
 
     # Décision avec seuil de confiance minimum plus bas
-    if score_full > score_empty and score_full > 0.25:
+    if score_full > score_empty and score_full > 0.18:
         confidence = score_full + (score_full - score_empty) * 0.3
         return 'full', min(0.95, confidence)
     elif score_empty > score_full and score_empty > 0.25:
@@ -792,25 +793,58 @@ def extract_features_for_knn(image_path):
         features['color_entropy']
     ]
 
-def train_all_validated_ml():
+def train_all_train_folder_ml():
     X = []
     y = []
-    # Utiliser toutes les images validées manuellement
-    validated_images = TrashImage.query.filter(TrashImage.status.in_(['full', 'empty']), TrashImage.ai_validated==True).all()
-    for img in validated_images:
-        filepath = os.path.join('uploads', img.filename)
-        if os.path.exists(filepath):
-            feats = extract_features_for_knn(filepath)
-            if feats:
+    clean_dir = os.path.join(app.config['TRAINING_FOLDER'], 'with_label', 'clean')
+    dirty_dir = os.path.join(app.config['TRAINING_FOLDER'], 'with_label', 'dirty')
+    for img_file in glob.glob(os.path.join(clean_dir, '*')):
+        if img_file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
+            feats = extract_features_for_knn(img_file)
+            if feats and isinstance(feats, (list, np.ndarray)):
                 X.append(feats)
-                y.append(0 if img.status == 'empty' else 1)
+                y.append(0)  # 0 = empty/clean
+            else:
+                print(f"Image ignorée (clean): {img_file} (features invalides)")
+    for img_file in glob.glob(os.path.join(dirty_dir, '*')):
+        if img_file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
+            feats = extract_features_for_knn(img_file)
+            if feats and isinstance(feats, (list, np.ndarray)):
+                X.append(feats)
+                y.append(1)  # 1 = full/dirty
+            else:
+                print(f"Image ignorée (dirty): {img_file} (features invalides)")
     if not X:
-        print('Aucune donnée pour entraîner les modèles ML.')
+        print('Aucune donnée pour entraîner les modèles ML (train folders).')
+        return False
+    # Vérification du nombre de features attendu
+    expected_len = len(X[0])
+    X_clean = []
+    y_clean = []
+    for feats, label in zip(X, y):
+        feats = np.asarray(feats).flatten()
+        if len(feats) == expected_len:
+            X_clean.append(feats)
+            y_clean.append(label)
+        else:
+            print(f"Image ignorée (shape incohérente): {feats.shape}, attendu {expected_len}")
+    X = np.array(X_clean)
+    y = np.array(y_clean)
+    if len(X) == 0 or len(y) == 0:
+        print("Erreur: aucune donnée exploitable après filtrage.")
+        return False
+    # Vérification du nombre de classes
+    n_classes = len(np.unique(y))
+    print(f"Nombre d'images clean valides : {sum(1 for label in y if label == 0)}")
+    print(f"Nombre d'images dirty valides : {sum(1 for label in y if label == 1)}")
+    print(f"Nombre total d'images utilisées : {len(y)}")
+    if n_classes < 2:
+        print(f"Erreur : il faut au moins 2 classes pour entraîner les modèles ML (trouvé {n_classes})")
         return False
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
     # KNN
-    knn = KNeighborsClassifier(n_neighbors=5)
+    knn = KNeighborsClassifier(n_neighbors=10)
     knn.fit(X_scaled, y)
     with open(KNN_MODEL_FILE, 'wb') as f:
         pickle.dump(knn, f)
@@ -827,16 +861,16 @@ def train_all_validated_ml():
     # Sauvegarde du scaler
     with open('scaler_ml.pkl', 'wb') as f:
         pickle.dump(scaler, f)
-    print(f'Modèles ML entraînés et sauvegardés ({len(X)} images validées manuellement).')
+    print(f'Modèles ML entraînés et sauvegardés ({len(X)} images des dossiers train).')
     return True
 
 @app.route('/train_all_validated_ml')
 def train_all_validated_ml_route():
-    ok = train_all_validated_ml()
+    ok = train_all_train_folder_ml()
     if ok:
-        flash('Modèles ML (KNN, RF, SVM) entraînés sur toutes les images validées manuellement avec succès.')
+        flash('Modèles ML (KNN, RF, SVM) entraînés sur toutes les images des dossiers train avec succès.')
     else:
-        flash('Erreur lors de l\'entraînement des modèles ML (pas assez de données validées).')
+        flash('Erreur lors de l\'entraînement des modèles ML (pas assez de données dans train).')
     return redirect(url_for('rules'))
 
 @app.route('/reset_rules_knn')
