@@ -11,7 +11,7 @@
                     <i class="fas fa-images me-2"></i>
                     Galerie d'images
                 </h2>
-                <a href="{{ url_for('upload') }}" class="btn btn-primary">
+                <a href="{{ url_for('main.upload') }}" class="btn btn-primary">
                     <i class="fas fa-plus me-2"></i>Ajouter une image
                 </a>
             </div>
@@ -28,19 +28,19 @@
                         </div>
                         <div class="col-md-6">
                             <div class="btn-group" role="group">
-                                <a href="{{ url_for('gallery', status='all') }}" class="btn btn-outline-primary {{ 'active' if status_filter == 'all' else '' }}">
+                                <a href="{{ url_for('main.gallery', status='all') }}" class="btn btn-outline-primary {{ 'active' if status_filter == 'all' else '' }}">
                                     <i class="fas fa-list me-1"></i>Toutes
                                 </a>
-                                <a href="{{ url_for('gallery', status='full') }}" class="btn btn-outline-danger {{ 'active' if status_filter == 'full' else '' }}">
+                                <a href="{{ url_for('main.gallery', status='full') }}" class="btn btn-outline-danger {{ 'active' if status_filter == 'full' else '' }}">
                                     <i class="fas fa-exclamation-triangle me-1"></i>Pleines
                                 </a>
-                                <a href="{{ url_for('gallery', status='empty') }}" class="btn btn-outline-success {{ 'active' if status_filter == 'empty' else '' }}">
+                                <a href="{{ url_for('main.gallery', status='empty') }}" class="btn btn-outline-success {{ 'active' if status_filter == 'empty' else '' }}">
                                     <i class="fas fa-check-circle me-1"></i>Vides
                                 </a>
-                                <a href="{{ url_for('gallery', status='pending') }}" class="btn btn-outline-warning {{ 'active' if status_filter == 'pending' else '' }}">
+                                <a href="{{ url_for('main.gallery', status='pending') }}" class="btn btn-outline-warning {{ 'active' if status_filter == 'pending' else '' }}">
                                     <i class="fas fa-clock me-1"></i>En attente
                                 </a>
-                                <a href="{{ url_for('gallery', status='unknown') }}" class="btn btn-outline-secondary {{ 'active' if status_filter == 'unknown' else '' }}">
+                                <a href="{{ url_for('main.gallery', status='unknown') }}" class="btn btn-outline-secondary {{ 'active' if status_filter == 'unknown' else '' }}">
                                     <i class="fas fa-question-circle me-1"></i>Incertaines
                                 </a>
                             </div>
@@ -57,7 +57,7 @@
             <div class="col-lg-4 col-md-6">
                 <div class="card h-100 image-card" id="image-card-{{ image.id }}">
                     <div class="position-relative">
-                        <img src="{{ url_for('uploaded_file', filename=image.filename) }}" class="card-img-top gallery-img-thumb" alt="Image de poubelle" style="height: 200px; object-fit: cover; cursor:pointer;" data-image-index="{{ loop.index0 }}">
+                        <img src="{{ url_for('main.uploaded_file', filename=image.filename) }}" class="card-img-top gallery-img-thumb" alt="Image de poubelle" style="height: 200px; object-fit: cover; cursor:pointer;" data-image-index="{{ loop.index0 }}">
                         <div class="position-absolute top-0 end-0 m-2 status-badge">
                             {% if image.status == 'full' %}
                                 <span class="badge bg-danger"><i class="fas fa-exclamation-triangle me-1"></i>Pleine</span>
@@ -121,26 +121,26 @@
                     <div class="card-footer bg-transparent">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <!-- Bouton de suppression pour toutes les images -->
-                                <form method="POST" action="{{ url_for('delete_image', image_id=image.id) }}" style="display:inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette image ?');">
+                                <!-- Bouton de suppression -->
+                                <form method="POST" action="{{ url_for('main.delete_image', image_id=image.id) }}" style="display:inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette image ?');">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">
                                         <i class="fas fa-trash me-1"></i>Supprimer
                                     </button>
                                 </form>
-                                <!-- Bouton demander à l'IA (toujours visible) -->
-                                <a href="#" class="btn btn-sm btn-outline-primary ms-2 ajax-ia-btn" data-image-id="{{ image.id }}" data-url="{{ url_for('resimuler_image_ajax', image_id=image.id) }}">
+                                <!-- Bouton Demander à l'IA -->
+                                <a href="#" class="btn btn-sm btn-outline-primary ms-2 ajax-ia-btn" data-image-id="{{ image.id }}" data-url="{{ url_for('main.resimuler_image_ajax', image_id=image.id) }}">
                                     <i class="fas fa-robot me-1"></i>Demander à l'IA
                                 </a>
-                                <!-- Boutons d'annotation rapide uniquement si en attente -->
+                                <!-- Annotation rapide -->
                                 {% if image.status == 'pending' %}
                                 <div class="btn-group btn-group-sm annotation-group ms-2" role="group" data-image-id="{{ image.id }}">
-                                    <form method="POST" action="{{ url_for('validate_prediction_ajax', image_id=image.id) }}" class="ajax-validate-form" data-image-id="{{ image.id }}" style="display:inline;">
+                                    <form method="POST" action="{{ url_for('main.validate_prediction_ajax', image_id=image.id) }}" class="ajax-validate-form" data-image-id="{{ image.id }}" style="display:inline;">
                                         <input type="hidden" name="status" value="full">
                                         <button type="submit" class="btn btn-outline-danger annotate-btn" data-action="full">
                                             <i class="fas fa-exclamation-triangle me-1"></i>Pleine
                                         </button>
                                     </form>
-                                    <form method="POST" action="{{ url_for('validate_prediction_ajax', image_id=image.id) }}" class="ajax-validate-form" data-image-id="{{ image.id }}" style="display:inline;">
+                                    <form method="POST" action="{{ url_for('main.validate_prediction_ajax', image_id=image.id) }}" class="ajax-validate-form" data-image-id="{{ image.id }}" style="display:inline;">
                                         <input type="hidden" name="status" value="empty">
                                         <button type="submit" class="btn btn-outline-success annotate-btn" data-action="empty">
                                             <i class="fas fa-check-circle me-1"></i>Vide
@@ -149,7 +149,7 @@
                                 </div>
                                 {% endif %}
                             </div>
-                            <!-- Indicateur de validation IA -->
+                            <!-- Indicateur IA validée -->
                             {% if image.ai_validated %}
                                 {% if image.ml_correct %}
                                     <small class="text-success"><i class="fas fa-check-circle me-1"></i>IA correcte</small>
@@ -169,21 +169,21 @@
                 <nav aria-label="Navigation des pages">
                     <ul class="pagination justify-content-center">
                         {% if images.has_prev %}
-                            <li class="page-item"><a class="page-link" href="{{ url_for('gallery', page=images.prev_num, status=status_filter) }}"><i class="fas fa-chevron-left"></i></a></li>
+                            <li class="page-item"><a class="page-link" href="{{ url_for('main.gallery', page=images.prev_num, status=status_filter) }}"><i class="fas fa-chevron-left"></i></a></li>
                         {% endif %}
                         {% for page_num in images.iter_pages() %}
                             {% if page_num %}
                                 {% if page_num != images.page %}
-                                    <li class="page-item"><a class="page-link" href="{{ url_for('gallery', page=page_num, status=status_filter) }}">{{ page_num }}</a></li>
+                                    <li class="page-item"><a class="page-link" href="{{ url_for('main.gallery', page=page_num, status=status_filter) }}">{{ page_num }}</a></li>
                                 {% else %}
                                     <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
                                 {% endif %}
                             {% else %}
-                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                <li class="page-item disabled"><span class="page-link">…</span></li>
                             {% endif %}
                         {% endfor %}
                         {% if images.has_next %}
-                            <li class="page-item"><a class="page-link" href="{{ url_for('gallery', page=images.next_num, status=status_filter) }}"><i class="fas fa-chevron-right"></i></a></li>
+                            <li class="page-item"><a class="page-link" href="{{ url_for('main.gallery', page=images.next_num, status=status_filter) }}"><i class="fas fa-chevron-right"></i></a></li>
                         {% endif %}
                     </ul>
                 </nav>
@@ -196,7 +196,7 @@
             </div>
         </div>
     {% else %}
-        <div class="row"><div class="col-12"><div class="card"><div class="card-body text-center py-5"><i class="fas fa-images fa-4x text-muted mb-3"></i><h4>Aucune image trouvée</h4><p class="text-muted">{% if status_filter != 'all' %}Aucune image avec le statut "{{ status_filter }}" n'a été trouvée.{% else %}Aucune image n'a été uploadée pour le moment.{% endif %}</p><a href="{{ url_for('upload') }}" class="btn btn-primary"><i class="fas fa-upload me-2"></i>Uploader la première image</a></div></div></div></div>
+        <div class="row"><div class="col-12"><div class="card"><div class="card-body text-center py-5"><i class="fas fa-images fa-4x text-muted mb-3"></i><h4>Aucune image trouvée</h4><p class="text-muted">{% if status_filter != 'all' %}Aucune image avec le statut "{{ status_filter }}" n'a été trouvée.{% else %}Aucune image n'a été uploadée pour le moment.{% endif %}</p><a href="{{ url_for('main.upload') }}" class="btn btn-primary"><i class="fas fa-upload me-2"></i>Uploader la première image</a></div></div></div></div>
     {% endif %}
 </div>
 
@@ -228,7 +228,7 @@ const imagesData = [
     {% for image in images.items %}
     {
         id: {{ image.id }},
-        filename: "{{ url_for('uploaded_file', filename=image.filename) }}",
+        filename: "{{ url_for('main.uploaded_file', filename=image.filename) }}",
         status: "{{ image.status }}",
         original_filename: "{{ image.original_filename|escape }}",
         width: {{ image.width }},

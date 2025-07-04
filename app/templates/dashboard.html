@@ -285,7 +285,7 @@
             <div class="card">
                 <div class="card-body text-center">
                     <h5 class="card-title">Histogramme de la luminosité (statique)</h5>
-                    <img src="{{ url_for('static_graph_luminosity') }}" class="img-fluid" alt="Histogramme luminosité">
+                    <img src="{{ url_for('graph.luminosity') }}" class="img-fluid" alt="Histogramme luminosité">
                 </div>
             </div>
         </div>
@@ -293,7 +293,7 @@
             <div class="card">
                 <div class="card-body text-center">
                     <h5 class="card-title">Histogramme du contraste (statique)</h5>
-                    <img src="{{ url_for('static_graph_contrast') }}" class="img-fluid" alt="Histogramme contraste">
+                    <img src="{{ url_for('graph.contrast') }}" class="img-fluid" alt="Histogramme contraste">
                 </div>
             </div>
         </div>
@@ -301,7 +301,7 @@
             <div class="card">
                 <div class="card-body text-center">
                     <h5 class="card-title">Répartition des statuts (statique)</h5>
-                    <img src="{{ url_for('static_graph_status') }}" class="img-fluid" alt="Camembert statuts">
+                    <img src="{{ url_for('graph.status') }}" class="img-fluid" alt="Camembert statuts">
                 </div>
             </div>
         </div>
@@ -334,16 +334,7 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script>
-let allData = [];
-let statusChartObj = null;
-let brightnessChartObj = null;
-let aiPredictionsChartObj = null;
-let aiPerformanceChartObj = null;
-
 // Données IA passées depuis le backend
 const aiData = {
     predFull: {{ ai_pred_full }},
@@ -353,6 +344,12 @@ const aiData = {
     incorrect: {{ ml_incorrect }},
     totalValidated: {{ total_validated }}
 };
+
+let allData = [];
+let statusChartObj = null;
+let brightnessChartObj = null;
+let aiPredictionsChartObj = null;
+let aiPerformanceChartObj = null;
 
 function initAICharts() {
     // Graphique répartition des prédictions IA
@@ -420,7 +417,7 @@ function updateCharts(data) {
     });
     // Chart.js - Statut
     const ctx1 = document.getElementById('statusChart').getContext('2d');
-    if(statusChartObj) statusChartObj.destroy();
+    if (statusChartObj) statusChartObj.destroy();
     statusChartObj = new Chart(ctx1, {
         type: 'bar',
         data: {
@@ -436,17 +433,17 @@ function updateCharts(data) {
     // Luminosité par date
     const dateMap = {};
     data.forEach(img => {
-        if(!dateMap[img.date]) dateMap[img.date] = [];
-        if(img.brightness !== null) dateMap[img.date].push(img.brightness);
+        if (!dateMap[img.date]) dateMap[img.date] = [];
+        if (img.brightness !== null) dateMap[img.date].push(img.brightness);
     });
     const dates = Object.keys(dateMap).sort();
     const avgBrightness = dates.map(date => {
         const arr = dateMap[date];
-        if(arr.length === 0) return null;
+        if (arr.length === 0) return null;
         return arr.reduce((a,b) => a+b, 0) / arr.length;
     });
     const ctx2 = document.getElementById('brightnessChart').getContext('2d');
-    if(brightnessChartObj) brightnessChartObj.destroy();
+    if (brightnessChartObj) brightnessChartObj.destroy();
     brightnessChartObj = new Chart(ctx2, {
         type: 'line',
         data: {
@@ -463,23 +460,22 @@ function updateCharts(data) {
 }
 
 function applyFilters() {
-    let status = document.getElementById('statusFilter').value;
-    let date = document.getElementById('dateFilter').value;
-    let filtered = allData.filter(img => {
+    const status = document.getElementById('statusFilter').value;  
+    const date   = document.getElementById('dateFilter').value;    
+    const filtered = allData.filter(img => {
         let ok = true;
-        if(status !== 'all') ok = ok && img.status === status;
-        if(date) ok = ok && img.date === date;
+        if (status !== 'all') ok = ok && img.status === status;
+        if (date)            ok = ok && img.date   === date;
         return ok;
     });
     updateCharts(filtered);
 }
 
 // Initialiser les graphiques IA au chargement
-document.addEventListener('DOMContentLoaded', function() {
-    initAICharts();
-});
+document.addEventListener('DOMContentLoaded', initAICharts);
 
-fetch('/api/stats')
+// Récupération des données via l'API
+fetch("{{ url_for('api.api_stats') }}")
     .then(resp => resp.json())
     .then(data => {
         allData = data;
@@ -500,45 +496,41 @@ let markersLayer = L.layerGroup().addTo(map);
 function updateMapMarkers(images) {
     markersLayer.clearLayers();
     images.forEach(img => {
-        let color = img.status === 'full' ? 'red' : (img.status === 'empty' ? 'green' : 'orange');
-        let marker = L.circleMarker([img.latitude, img.longitude], {
+        const color = img.status === 'full'
+            ? 'red'
+            : (img.status === 'empty' ? 'green' : 'orange');
+        const marker = L.circleMarker([img.latitude, img.longitude], {
             color: color,
             radius: 10,
             fillOpacity: 0.8
         }).addTo(markersLayer);
-        marker.bindPopup(`<b>${img.original_filename || 'Image'}</b><br>Status : ${img.status}<br>Date : ${img.upload_date}<br>Lieu : ${img.location_name}`);
+        marker.bindPopup(`
+            <b>${img.original_filename || 'Image'}</b><br>
+            Status : ${img.status}<br>
+            Date : ${img.upload_date}<br>
+            Lieu : ${img.location_name}
+        `);
     });
 }
 
-// Récupération des données via l'API
-let allMapImages = [];
 function fetchMapData(dateFilter=null, statusFilter='all') {
-    fetch('/api/map_data')
+    fetch("{{ url_for('api.api_map_data') }}")
         .then(resp => resp.json())
         .then(data => {
-            allMapImages = data;
             let filtered = data;
-            if(dateFilter) {
-                filtered = filtered.filter(img => img.upload_date.startsWith(dateFilter));
-            }
-            if(statusFilter && statusFilter !== 'all') {
-                filtered = filtered.filter(img => img.status === statusFilter);
-            }
+            if (dateFilter)   filtered = filtered.filter(img => img.upload_date.startsWith(dateFilter));
+            if (statusFilter && statusFilter !== 'all') filtered = filtered.filter(img => img.status === statusFilter);
             updateMapMarkers(filtered);
         });
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', () => {
     fetchMapData();
     document.getElementById('mapDateFilter').addEventListener('change', function() {
-        let date = this.value;
-        let status = document.getElementById('mapStatusFilter').value;
-        fetchMapData(date, status);
+        fetchMapData(this.value, document.getElementById('mapStatusFilter').value);
     });
     document.getElementById('mapStatusFilter').addEventListener('change', function() {
-        let status = this.value;
-        let date = document.getElementById('mapDateFilter').value;
-        fetchMapData(date, status);
+        fetchMapData(document.getElementById('mapDateFilter').value, this.value);
     });
 });
 </script>

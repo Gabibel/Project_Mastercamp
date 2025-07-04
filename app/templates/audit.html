@@ -59,7 +59,9 @@
                     {% if entry.image.filename and entry.anomalies and 'Fichier manquant' in entry.anomalies %}
                         <span class="text-danger">(absente)</span>
                     {% else %}
-                        <img src="{{ url_for('uploaded_file', filename=entry.image.filename) }}" alt="img" style="max-width:80px;max-height:60px;">
+                        <img src="{{ url_for('main.uploaded_file', filename=entry.image.filename) }}"
+                             alt="img"
+                             style="max-width:80px;max-height:60px;">
                     {% endif %}
                 </td>
                 <td>{{ entry.image.original_filename }}</td>
@@ -82,6 +84,9 @@
             {% endfor %}
         </tbody>
     </table>
-    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary mt-3"><i class="fas fa-arrow-left me-2"></i>Retour au dashboard</a>
+    <a href="{{ url_for('dashboard.dashboard') }}"
+       class="btn btn-secondary mt-3">
+       <i class="fas fa-arrow-left me-2"></i>Retour au dashboard
+    </a>
 </div>
-{% endblock %} 
+{% endblock %}
