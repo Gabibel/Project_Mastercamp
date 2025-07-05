@@ -29,7 +29,7 @@ def dashboard():
     TrashImage.ai_prediction.isnot(None),
     TrashImage.ai_prediction.notin_(['full', 'empty'])
 ).count()
-    # Précision par classe (vote ML)
+    # Précision par classe ( les votes ML)
     full_validated  = [img for img in validated if img.ml_vote == 'full']
     empty_validated = [img for img in validated if img.ml_vote == 'empty']
     full_correct = sum(1 for img in full_validated if img.ml_correct)
@@ -37,7 +37,7 @@ def dashboard():
     full_accuracy  = (full_correct  / len(full_validated) * 100) if full_validated else 0
     empty_accuracy = (empty_correct / len(empty_validated) * 100) if empty_validated else 0
 
-    # Comparaison modèles
+    # Comparaison des modèles
     def metrics(pred_attr):
         preds = [getattr(img, pred_attr) for img in validated if getattr(img, pred_attr) in ['full','empty']]
         truths = [img.manual_status         for img in validated if getattr(img, pred_attr) in ['full','empty']]

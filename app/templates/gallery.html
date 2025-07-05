@@ -17,7 +17,7 @@
             </div>
         </div>
     </div>
-    <!-- Filtres -->
+    <!-- Filtre -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
@@ -50,7 +50,7 @@
             </div>
         </div>
     </div>
-    <!-- Grille d'images -->
+    <!-- images -->
     {% if images.items %}
         <div class="row g-4">
             {% for image in images.items %}
@@ -76,7 +76,7 @@
                         <h6 class="card-title">{{ image.original_filename[:30] }}{% if image.original_filename|length > 30 %}...{% endif %}</h6>
                         <p class="card-text text-muted small"><i class="fas fa-calendar me-1"></i>{{ image.upload_date.strftime('%d/%m/%Y %H:%M') }}</p>
                         
-                        <!-- Prédiction par règles (EN HAUT) -->
+                        <!-- Prédiction règles -->
                         <div class="row mb-2">
                             <div class="col-12 text-center">
                                 {% set pred = image.ai_prediction %}
@@ -95,7 +95,7 @@
                             </div>
                         </div>
 
-                        <!-- Résultat final ML (vote) en dessous -->
+                        <!-- Résultat vote ml -->
                         <div class="row mb-2">
                             <div class="col-12 text-center">
                                 {% if image.ml_vote == 'full' %}
@@ -107,7 +107,7 @@
                                 {% endif %}
                             </div>
                         </div>
-                        <!-- Résultats Machine Learning -->
+                        <!-- Résultats ML -->
                         <div class="row text-center mb-2">
                             <div class="col-4">
                                 <span class="badge bg-primary"><i class="fas fa-user-friends me-1"></i>KNN<br>{{ image.knn_prediction|title if image.knn_prediction else 'N/A' }}</span><br>
@@ -123,7 +123,7 @@
                             </div>
                         </div>
                         
-                        <!-- Métadonnées techniques -->
+                        <!-- Métadonnées  -->
                         <div class="row text-center">
                             <div class="col-4"><small class="text-muted"><i class="fas fa-expand-arrows-alt me-1"></i><br>{{ image.width }}×{{ image.height }}</small></div>
                             <div class="col-4"><small class="text-muted"><i class="fas fa-weight-hanging me-1"></i><br>{% if image.file_size %}{{ (image.file_size / 1024)|round(1) }} KB{% else %}N/A{% endif %}</small></div>
@@ -133,17 +133,17 @@
                     <div class="card-footer bg-transparent">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <!-- Bouton de suppression -->
+                                <!-- Delete -->
                                 <form method="POST" action="{{ url_for('main.delete_image', image_id=image.id) }}" style="display:inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette image ?');">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">
                                         <i class="fas fa-trash me-1"></i>Supprimer
                                     </button>
                                 </form>
-                                <!-- Bouton Demander à l'IA -->
+                                <!-- Demander à l'IA -->
                                 <a href="#" class="btn btn-sm btn-outline-primary ms-2 ajax-ia-btn" data-image-id="{{ image.id }}" data-url="{{ url_for('main.resimuler_image_ajax', image_id=image.id) }}">
                                     <i class="fas fa-robot me-1"></i>Demander à l'IA
                                 </a>
-                                <!-- Annotation rapide -->
+                                <!-- Annotation -->
                                 {% if image.status == 'pending' %}
                                 <div class="btn-group btn-group-sm annotation-group ms-2" role="group" data-image-id="{{ image.id }}">
                                     <form method="POST" action="{{ url_for('main.validate_prediction_ajax', image_id=image.id) }}" class="ajax-validate-form" data-image-id="{{ image.id }}" style="display:inline;">
@@ -161,7 +161,7 @@
                                 </div>
                                 {% endif %}
                             </div>
-                            <!-- Indicateur IA validée -->
+                            <!-- Indicateur -->
                             {% if image.ai_validated %}
                                 {% if image.ml_correct %}
                                     <small class="text-success"><i class="fas fa-check-circle me-1"></i>IA correcte</small>
@@ -212,7 +212,6 @@
     {% endif %}
 </div>
 
-<!-- Modal annotation -->
 <div class="modal fade" id="annotateModal" tabindex="-1" aria-labelledby="annotateModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
@@ -235,7 +234,6 @@
 </div>
 
 <script>
-// Préparer les données images côté JS
 const imagesData = [
     {% for image in images.items %}
     {
@@ -263,7 +261,6 @@ function showAnnotateModal(idx) {
     document.getElementById('modalMeta').innerHTML =
         `<b>Dimensions :</b> ${img.width}×${img.height} px | <b>Taille :</b> ${(img.file_size/1024).toFixed(1)} KB | <b>Luminosité :</b> ${Math.round(img.brightness)}<br>` +
         `<b>Date upload :</b> ${img.upload_date}`;
-    // Boutons annotation si en attente
     let btns = '';
     if(img.status === 'pending') {
         btns += `<form method="POST" action="/validate/${img.id}" style="display:inline;">
@@ -278,7 +275,6 @@ function showAnnotateModal(idx) {
         btns = `<span class="text-muted">Image déjà annotée</span>`;
     }
     document.getElementById('modalAnnotationBtns').innerHTML = btns;
-    // Navigation
     document.getElementById('modalPrevBtn').style.visibility = (idx > 0) ? 'visible' : 'hidden';
     document.getElementById('modalNextBtn').style.visibility = (idx < imagesData.length-1) ? 'visible' : 'hidden';
     var modal = new bootstrap.Modal(document.getElementById('annotateModal'));
@@ -331,15 +327,12 @@ document.querySelectorAll('.ajax-validate-form').forEach(form => {
         .then(resp => resp.json())
         .then(data => {
             if(data.success) {
-                // Mettre à jour le badge statut
                 const card = document.getElementById('image-card-' + imageId);
                 const badgeDiv = card.querySelector('.status-badge');
                 if (badgeDiv) badgeDiv.innerHTML = data.badge_html;
-                // Mettre à jour l'indicateur IA
                 const iaStatus = card.querySelector('.card-footer .text-success, .card-footer .text-danger');
                 if(iaStatus) iaStatus.outerHTML = data.ia_status_html;
                 else {
-                    // Si pas encore présent, l'ajouter
                     const footer = card.querySelector('.card-footer .d-flex');
                     if(footer) footer.insertAdjacentHTML('beforeend', data.ia_status_html);
                 }
@@ -359,17 +352,14 @@ document.querySelectorAll('.ajax-ia-btn').forEach(btn => {
         .then(resp => resp.json())
         .then(data => {
             if(data.success) {
-                // Mettre à jour le badge statut
                 const card = document.getElementById('image-card-' + imageId);
                 const badgeDiv = card.querySelector('.status-badge');
                 if (badgeDiv) badgeDiv.innerHTML = data.badge_html;
-                // Mettre à jour les prédictions IA/ML
                 card.querySelector('.badge.bg-info').innerHTML = `<i class='fas fa-cogs me-1'></i>Règles<br>${data.ai_prediction ? data.ai_prediction.charAt(0).toUpperCase() + data.ai_prediction.slice(1) : 'N/A'}`;
                 card.querySelector('.badge.bg-info + br + small').innerHTML = `Confiance : ${data.ai_confidence !== null ? (data.ai_confidence * 100).toFixed(1) + '%' : 'N/A'}`;
                 card.querySelector('.badge.bg-primary').innerHTML = `<i class='fas fa-user-friends me-1'></i>KNN<br>${data.knn_prediction ? data.knn_prediction.charAt(0).toUpperCase() + data.knn_prediction.slice(1) : 'N/A'}`;
                 card.querySelector('.badge.bg-success').innerHTML = `<i class='fas fa-tree me-1'></i>RF<br>${data.rf_prediction ? data.rf_prediction.charAt(0).toUpperCase() + data.rf_prediction.slice(1) : 'N/A'}`;
                 card.querySelector('.badge.bg-warning').innerHTML = `<i class='fas fa-wave-square me-1'></i>SVM<br>${data.svm_prediction ? data.svm_prediction.charAt(0).toUpperCase() + data.svm_prediction.slice(1) : 'N/A'}`;
-                // Mettre à jour le vote ML
                 const mlVoteDiv = card.querySelector('.row.mb-2 .col-12 span');
                 if(data.ml_vote === 'full') {
                     mlVoteDiv.className = 'badge bg-danger fs-5 px-4 py-2';

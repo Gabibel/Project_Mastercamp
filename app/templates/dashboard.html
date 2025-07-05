@@ -12,7 +12,7 @@
             </h2>
         </div>
     </div>
-    <!-- Statistiques générales -->
+    <!-- stats générales -->
     <div class="row g-4 mb-5">
         <div class="col-md-3">
             <div class="card stat-card">
@@ -244,7 +244,7 @@
             </div>
         </div>
     </div>
-    <!-- Graphiques dynamiques -->
+    <!-- Graphes -->
     <div class="row mb-5">
         <div class="col-md-6">
             <div class="card">
@@ -290,7 +290,7 @@
             </div>
         </div>
     </div>
-    <!-- Carte interactive des poubelles -->
+    <!-- Carte -->
     <div class="row mb-5">
         <div class="col-12">
             <div class="card">
@@ -321,7 +321,6 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-// Données IA passées depuis le backend
 const aiData = {
     predFull: {{ ai_pred_full }},
     predEmpty: {{ ai_pred_empty }},
@@ -338,7 +337,6 @@ let aiPredictionsChartObj = null;
 let aiPerformanceChartObj = null;
 
 function initAICharts() {
-    // Graphique répartition des prédictions IA
     const ctx1 = document.getElementById('aiPredictionsChart').getContext('2d');
     aiPredictionsChartObj = new Chart(ctx1, {
         type: 'doughnut',
@@ -360,7 +358,6 @@ function initAICharts() {
         });
 
     
-    // Graphique performance IA vs validation humaine
     const ctx2 = document.getElementById('aiPerformanceChart').getContext('2d');
     aiPerformanceChartObj = new Chart(ctx2, {
         type: 'bar',
@@ -395,12 +392,10 @@ function initAICharts() {
 }
 
 function updateCharts(data) {
-    // Statuts
     const statusCounts = {full: 0, empty: 0, pending: 0};
     data.forEach(img => {
         if (statusCounts[img.status] !== undefined) statusCounts[img.status]++;
     });
-    // Chart.js - Statut
     const ctx1 = document.getElementById('statusChart').getContext('2d');
     if (statusChartObj) statusChartObj.destroy();
     statusChartObj = new Chart(ctx1, {
@@ -415,7 +410,6 @@ function updateCharts(data) {
         },
         options: {responsive: true}
     });
-    // Luminosité par date
     const dateMap = {};
     data.forEach(img => {
         if (!dateMap[img.date]) dateMap[img.date] = [];
@@ -444,10 +438,8 @@ function updateCharts(data) {
     });
 }
 
-// Initialiser les graphiques IA au chargement
 document.addEventListener('DOMContentLoaded', initAICharts);
 
-// Récupération des données via l'API
 fetch("{{ url_for('api.api_stats') }}")
     .then(resp => resp.json())
     .then(data => {
@@ -455,7 +447,6 @@ fetch("{{ url_for('api.api_stats') }}")
         updateCharts(allData);
     });
 
-// Carte Leaflet
 let map = L.map('trashMap').setView([48.8566, 2.3522], 12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,

@@ -25,7 +25,6 @@
                             <input type="datetime-local" class="form-control" id="photo_datetime" name="photo_datetime">
                             <div class="form-text">Indiquez la date et l'heure de la prise de vue (optionnel).</div>
                         </div>
-                        <!-- Carte de localisation -->
                         <div class="mb-4">
                             <label class="form-label">Localisation de la photo :</label>
                             <div id="map" style="height: 350px;"></div>
@@ -38,7 +37,7 @@
                         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
                         <script>
                         document.addEventListener('DOMContentLoaded', function() {
-                            var map = L.map('map').setView([48.8566, 2.3522], 12); // Paris par défaut
+                            var map = L.map('map').setView([48.8566, 2.3522], 12); 
                             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                                 maxZoom: 19,
                                 attribution: '© OpenStreetMap'
@@ -49,7 +48,6 @@
                                 marker = L.marker(e.latlng).addTo(map);
                                 document.getElementById('latitude').value = e.latlng.lat;
                                 document.getElementById('longitude').value = e.latlng.lng;
-                                // Optionnel : reverse geocoding pour nom de lieu
                                 fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}`)
                                   .then(resp => resp.json())
                                   .then(data => {
@@ -68,7 +66,6 @@
                 </div>
             </div>
             
-            <!-- Instructions -->
             <div class="card mt-4">
                 <div class="card-header">
                     <h5 class="mb-0">

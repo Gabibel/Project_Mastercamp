@@ -26,10 +26,8 @@ def async_analyze_and_update(trash_image_id, filepath, app):
             if not analysis:
                 return
 
-            # prédiction par règles
             rule_pred, rule_conf = predict_with_advanced_ai(analysis)
 
-            # extraction ML
             feats = [
                 analysis['brightness'],
                 analysis['contrast'],
@@ -43,7 +41,7 @@ def async_analyze_and_update(trash_image_id, filepath, app):
             knn_pred = rf_pred = svm_pred = None
             knn_conf = rf_conf = svm_conf = None
 
-            # chargéé du scaler
+            # chargé du scaler
             scaler_path = os.path.join(app.root_path, 'scaler_ml.pkl')
             scaler = None
             if os.path.exists(scaler_path):
@@ -79,7 +77,7 @@ def async_analyze_and_update(trash_image_id, filepath, app):
             votes = [v for v in (knn_pred, rf_pred, svm_pred) if v in ('full','empty')]
             ml_vote = max(set(votes), key=votes.count) if votes else None
 
-            # mise à jour
+            # maj
             for k, v in analysis.items():
                 setattr(img, k, v)
             img.ai_prediction, img.ai_confidence = rule_pred, rule_conf
@@ -90,7 +88,6 @@ def async_analyze_and_update(trash_image_id, filepath, app):
             img.status  = 'pending'
             db.session.commit()
 
-    # on démarre le thread
     threading.Thread(target=worker, daemon=True).start()
 
 def train_all_train_folder_ml():

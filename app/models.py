@@ -9,28 +9,28 @@ class TrashImage(db.Model):
     status = db.Column(db.String(50), default='pending')
     manual_status = db.Column(db.String(50))
     
-    # Prédiction IA
-    ai_prediction = db.Column(db.String(50))  # 'full' ou 'empty'
-    ai_confidence = db.Column(db.Float)  # Score de confiance (0-1)
-    ai_validated = db.Column(db.Boolean, default=False)  # Si l'IA a été validée
-    ai_correct = db.Column(db.Boolean)  # Si la prédiction IA était correcte
+    # IA
+    ai_prediction = db.Column(db.String(50))  # full ou empty
+    ai_confidence = db.Column(db.Float)  # 0 ou 1
+    ai_validated = db.Column(db.Boolean, default=False) 
+    ai_correct = db.Column(db.Boolean)  
     
-    # Prédiction KNN
-    knn_prediction = db.Column(db.String(50))  # 'full' ou 'empty'
-    knn_confidence = db.Column(db.Float)  # Score de confiance (0-1)
+    # KNN
+    knn_prediction = db.Column(db.String(50))  
+    knn_confidence = db.Column(db.Float) 
     
-    # Prédiction Random Forest
+    # Random Forest
     rf_prediction = db.Column(db.String(50))
     rf_confidence = db.Column(db.Float)
     
-    # Prédiction SVM
+    # SVM
     svm_prediction = db.Column(db.String(50))
     svm_confidence = db.Column(db.Float)
     
     # Vote final ML
     ml_vote = db.Column(db.String(50))
     
-    # Métadonnées d'analyse avancée
+    # Métadonnées
     file_size = db.Column(db.Integer)
     width = db.Column(db.Integer)
     height = db.Column(db.Integer)
@@ -40,20 +40,19 @@ class TrashImage(db.Model):
     contrast = db.Column(db.Float)
     brightness = db.Column(db.Float)
     
-    # Nouvelles métadonnées pour IA améliorée
-    color_variance = db.Column(db.Float)  # Variance des couleurs
-    edge_density = db.Column(db.Float)  # Densité de contours
-    texture_complexity = db.Column(db.Float)  # Complexité de texture
-    dark_pixel_ratio = db.Column(db.Float)  # Ratio de pixels sombres
-    color_entropy = db.Column(db.Float)  # Entropie des couleurs
-    spatial_distribution = db.Column(db.Float)  # Distribution spatiale
+    # Nouvelles métadonnées 
+    color_variance = db.Column(db.Float)  
+    edge_density = db.Column(db.Float)  
+    texture_complexity = db.Column(db.Float)  
+    dark_pixel_ratio = db.Column(db.Float)  
+    color_entropy = db.Column(db.Float)  
+    spatial_distribution = db.Column(db.Float) 
     
     latitude = db.Column(db.Float, default=48.8566)
     longitude = db.Column(db.Float, default=2.3522)
     location_name = db.Column(db.String(255), default='Paris')
     
-    # Ajout du champ ml_correct dans TrashImage
-    ml_correct = db.Column(db.Boolean)  # Si le vote ML était correct
+    ml_correct = db.Column(db.Boolean)  
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

@@ -5,34 +5,30 @@ import cv2
 import json
 import pickle
 def analyze_image_advanced(image_path):
-    """Analyse avancée de l'image avec de multiples caractéristiques réelles"""
     try:
         file_size = os.path.getsize(image_path)
         img = Image.open(image_path).convert('RGB')
         width, height = img.size
         stat = ImageStat.Stat(img)
         avg_color_r, avg_color_g, avg_color_b = stat.mean
-        # Calcul de la luminance (perçue)
+        # Calcul de la luminance
         np_img = np.array(img)
         luminance = 0.2126 * np_img[:,:,0] + 0.7152 * np_img[:,:,1] + 0.0722 * np_img[:,:,2]
         brightness = float(np.mean(luminance))
         contrast = float(np.std(luminance))
-        # Variance des couleurs (sur tous les canaux)
+        # Variance des couleurs
         color_variance = float(np.var(np_img))
-        # Densité de contours (OpenCV Canny)
+        # Densité de contours 
         img_gray = cv2.cvtColor(np_img, cv2.COLOR_RGB2GRAY)
         edges = cv2.Canny(img_gray, 100, 200)
         edge_density = float(np.sum(edges > 0)) / (width * height)
-        # Complexité de texture (std du Laplacien)
+        # Complexité de texture (pour voir notamment si c'est flou ou pas)
         laplacian = cv2.Laplacian(img_gray, cv2.CV_64F)
-        texture_complexity = float(np.std(laplacian)) / 100.0  # normalisé
-        # Ratio de pixels sombres (luminance < 50)
+        texture_complexity = float(np.std(laplacian)) / 100.0  
         dark_pixel_ratio = float(np.sum(luminance < 50)) / (width * height)
-        # Entropie des couleurs (histogramme sur 256 bins)
         hist = cv2.calcHist([img_gray], [0], None, [256], [0,256])
         hist_norm = hist / hist.sum()
         color_entropy = float(-np.sum(hist_norm * np.log2(hist_norm + 1e-7)))
-        # Distribution spatiale (std des positions des pixels sombres)
         dark_pixels = np.argwhere(luminance < 50)
         if len(dark_pixels) > 0:
             spatial_distribution = float(np.std(dark_pixels[:,0]) + np.std(dark_pixels[:,1])) / (width + height)
@@ -73,9 +69,6 @@ def extract_features_for_knn(image_path):
     ]
 
 def predict_with_advanced_ai(analysis):
-    """
-    Prédiction améliorée basée sur des règles plus sophistiquées et équilibrées, avec détection des poubelles fermées.
-    """
     if not analysis:
         return 'unknown', 0.0
 
@@ -177,40 +170,40 @@ def predict_with_advanced_ai(analysis):
         score_empty += feature_weights['texture_complexity']
 
     
-    # 1. Couleur dominante sombre + contours élevés => pleine
+    # Couleur dominante sombre + contours élevés -> pleine
     avg_color = (analysis['avg_color_r'] + analysis['avg_color_g'] + analysis['avg_color_b']) / 3
     if avg_color < 90 and features['edge_density'] > 0.15:
         score_full += 0.10
 
-    # 2. Texture ET variance élevées => pleine
+    # Texture et variance élevées -> pleine
     if features['texture_complexity'] > 0.5 and features['color_variance'] > 1200:
         score_full += 0.10
 
-    # 3. Texture ET variance faibles => vide ou fermée
+    # Texture et variance faibles -> vide ou fermée
     if features['texture_complexity'] < 0.2 and features['color_variance'] < 600:
         score_empty += 0.08
 
-    # 4. Luminosité faible ET beaucoup de pixels sombres => pleine
+    # Luminosité faible et beaucoup de pixels sombres -> pleine
     if features['brightness'] < 110 and features['dark_pixel_ratio'] > 0.25:
         score_full += 0.10
 
-    # 5. Luminosité forte ET peu de pixels sombres => vide
+    # Luminosité forte et peu de pixels sombres -> vide
     if features['brightness'] > 140 and features['dark_pixel_ratio'] < 0.10:
         score_empty += 0.10
 
-    # 6. Entropie très faible => vide ou fermée
+    # Entropie très faible -> vide ou fermée
     if features['color_entropy'] < 4.0:
         score_empty += 0.08
 
-    # 7. Entropie très élevée => pleine
+    # Entropie très élevée -> pleine
     if features['color_entropy'] > 6.0:
         score_full += 0.08
 
-    # 8. Distribution spatiale élevée => pleine
+    # Distribution spatiale élevée -> pleine
     if 'spatial_distribution' in analysis and analysis['spatial_distribution'] > 0.18:
         score_full += 0.07
 
-    # 9. Distribution spatiale très faible => vide ou fermée
+    # Distribution spatiale très faible -> vide ou fermée
     if 'spatial_distribution' in analysis and analysis['spatial_distribution'] < 0.06:
         score_empty += 0.07
 
@@ -240,11 +233,11 @@ def predict_with_advanced_ai(analysis):
         score_empty += 0.18
 
     # Normalisation et calcul de confiance
-    total_weight = sum(feature_weights.values()) + 0.18  # +0.18 pour les bonus
+    total_weight = sum(feature_weights.values()) + 0.18 
     score_full = min(0.95, score_full / total_weight)
     score_empty = min(0.95, score_empty / total_weight)
 
-    # Décision avec seuil de confiance minimum plus bas
+    # Décision avec seuil de confiance
     if score_full > score_empty and score_full > 0.12:
         confidence = score_full + (score_full - score_empty) * 0.3
         return 'full', min(0.95, confidence)
@@ -276,7 +269,7 @@ def train_all_train_folder_ml():
             feats = extract_features_for_knn(img_file)
             if feats is not None and isinstance(feats, (list, np.ndarray)):
                 X.append(feats)
-                y.append(0)  # label 0 = empty/clean
+                y.append(0)  # veut dire empty/clean
             else:
                 current_app.logger.warning(f"Ignorée (clean) : {img_file}")
 
@@ -285,7 +278,7 @@ def train_all_train_folder_ml():
             feats = extract_features_for_knn(img_file)
             if feats is not None and isinstance(feats, (list, np.ndarray)):
                 X.append(feats)
-                y.append(1)  # label 1 = full/dirty
+                y.append(1)  # veut dire full/dirty
             else:
                 current_app.logger.warning(f"Ignorée (dirty) : {img_file}")
 
@@ -335,7 +328,7 @@ def train_all_train_folder_ml():
     with open(SVM_MODEL_FILE, 'wb') as f:
         pickle.dump(svm, f)
 
-    # Sauvegarde du scaler
+    # Sauvegarde
     scaler_path = os.path.join(current_app.root_path, 'scaler_ml.pkl')
     with open(scaler_path, 'wb') as f:
         pickle.dump(scaler, f)
