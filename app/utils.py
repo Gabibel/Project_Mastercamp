@@ -110,7 +110,7 @@ def async_analyze_and_update(trash_image_id, filepath, app):
 
 def train_all_train_folder_ml():
     X, y = [], []
-    base = current_app.config['TRAINING_FOLDER']
+    base = os.path.join(current_app.root_path, current_app.config['TRAINING_FOLDER'])
     for label, folder in [(0, 'clean'), (1, 'dirty')]:
         path = os.path.join(base, 'with_label', folder)
         for imgf in glob.glob(os.path.join(path, '*')):
