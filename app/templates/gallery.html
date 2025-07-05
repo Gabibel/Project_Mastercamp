@@ -17,7 +17,7 @@
             </div>
         </div>
     </div>
-    <!-- Filtre -->
+    <!-- Filtres -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
@@ -50,7 +50,7 @@
             </div>
         </div>
     </div>
-    <!-- images -->
+    <!-- Images -->
     {% if images.items %}
         <div class="row g-4">
             {% for image in images.items %}
@@ -76,11 +76,19 @@
                         <h6 class="card-title">{{ image.original_filename[:30] }}{% if image.original_filename|length > 30 %}...{% endif %}</h6>
                         <p class="card-text text-muted small"><i class="fas fa-calendar me-1"></i>{{ image.upload_date.strftime('%d/%m/%Y %H:%M') }}</p>
                         
-                        <!-- Prédiction règles -->
+                        <!-- Prédiction par règles -->
                         <div class="row mb-2">
                             <div class="col-12 text-center">
                                 {% set pred = image.ai_prediction %}
-                                {% set label = pred == 'unknown' and ': Image Non conforme' or (pred|title if pred else 'N/A') %}
+                                {% if pred == 'full' %}
+                                    {% set label = 'Pleine' %}
+                                {% elif pred == 'empty' %}
+                                    {% set label = 'Vide' %}
+                                {% elif pred == 'unknown' %}
+                                    {% set label = 'Image non conforme' %}
+                                {% else %}
+                                    {% set label = 'N/A' %}
+                                {% endif %}
                                 <span class="badge bg-info text-dark fs-5 px-4 py-2 w-100 mb-2">
                                 <i class="fas fa-cogs me-1"></i>Règles {{ label }}
                                 </span><br>
@@ -95,7 +103,7 @@
                             </div>
                         </div>
 
-                        <!-- Résultat vote ml -->
+                        <!-- Résultat final ML -->
                         <div class="row mb-2">
                             <div class="col-12 text-center">
                                 {% if image.ml_vote == 'full' %}
@@ -109,21 +117,47 @@
                         </div>
                         <!-- Résultats ML -->
                         <div class="row text-center mb-2">
+                            {# KNN #}
+                            {% if image.knn_prediction == 'full' %}
+                                {% set knn_label = 'Pleine' %}
+                            {% elif image.knn_prediction == 'empty' %}
+                                {% set knn_label = 'Vide' %}
+                            {% else %}
+                                {% set knn_label = 'N/A' %}
+                            {% endif %}
                             <div class="col-4">
-                                <span class="badge bg-primary"><i class="fas fa-user-friends me-1"></i>KNN<br>{{ image.knn_prediction|title if image.knn_prediction else 'N/A' }}</span><br>
+                                <span class="badge bg-primary"><i class="fas fa-user-friends me-1"></i>KNN<br>{{ knn_label }}</span><br>
                                 <small class="text-muted">Confiance : {% if image.knn_confidence is not none %}{{ (image.knn_confidence * 100)|round(1) }}%{% else %}N/A{% endif %}</small>
                             </div>
+
+                            {# RF #}
+                            {% if image.rf_prediction == 'full' %}
+                                {% set rf_label = 'Pleine' %}
+                            {% elif image.rf_prediction == 'empty' %}
+                                {% set rf_label = 'Vide' %}
+                            {% else %}
+                                {% set rf_label = 'N/A' %}
+                            {% endif %}
                             <div class="col-4">
-                                <span class="badge bg-success"><i class="fas fa-tree me-1"></i>RF<br>{{ image.rf_prediction|title if image.rf_prediction else 'N/A' }}</span><br>
+                                <span class="badge bg-success"><i class="fas fa-tree me-1"></i>RF<br>{{ rf_label }}</span><br>
                                 <small class="text-muted">Confiance : {% if image.rf_confidence is not none %}{{ (image.rf_confidence * 100)|round(1) }}%{% else %}N/A{% endif %}</small>
                             </div>
+
+                            {# SVM #}
+                            {% if image.svm_prediction == 'full' %}
+                                {% set svm_label = 'Pleine' %}
+                            {% elif image.svm_prediction == 'empty' %}
+                                {% set svm_label = 'Vide' %}
+                            {% else %}
+                                {% set svm_label = 'N/A' %}
+                            {% endif %}
                             <div class="col-4">
-                                <span class="badge bg-warning text-dark"><i class="fas fa-wave-square me-1"></i>SVM<br>{{ image.svm_prediction|title if image.svm_prediction else 'N/A' }}</span><br>
+                                <span class="badge bg-warning text-dark"><i class="fas fa-wave-square me-1"></i>SVM<br>{{ svm_label }}</span><br>
                                 <small class="text-muted">Confiance : {% if image.svm_confidence is not none %}{{ (image.svm_confidence * 100)|round(1) }}%{% else %}N/A{% endif %}</small>
                             </div>
                         </div>
                         
-                        <!-- Métadonnées  -->
+                        <!-- Métadonnées -->
                         <div class="row text-center">
                             <div class="col-4"><small class="text-muted"><i class="fas fa-expand-arrows-alt me-1"></i><br>{{ image.width }}×{{ image.height }}</small></div>
                             <div class="col-4"><small class="text-muted"><i class="fas fa-weight-hanging me-1"></i><br>{% if image.file_size %}{{ (image.file_size / 1024)|round(1) }} KB{% else %}N/A{% endif %}</small></div>
@@ -133,13 +167,13 @@
                     <div class="card-footer bg-transparent">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <!-- Delete -->
+                                <!-- Bouton de suppression -->
                                 <form method="POST" action="{{ url_for('main.delete_image', image_id=image.id) }}" style="display:inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette image ?');">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">
                                         <i class="fas fa-trash me-1"></i>Supprimer
                                     </button>
                                 </form>
-                                <!-- Demander à l'IA -->
+                                <!-- Bouton Demander à l'IA -->
                                 <a href="#" class="btn btn-sm btn-outline-primary ms-2 ajax-ia-btn" data-image-id="{{ image.id }}" data-url="{{ url_for('main.resimuler_image_ajax', image_id=image.id) }}">
                                     <i class="fas fa-robot me-1"></i>Demander à l'IA
                                 </a>
@@ -161,7 +195,7 @@
                                 </div>
                                 {% endif %}
                             </div>
-                            <!-- Indicateur -->
+                            <!-- Indicateur IA validée -->
                             {% if image.ai_validated %}
                                 {% if image.ml_correct %}
                                     <small class="text-success"><i class="fas fa-check-circle me-1"></i>IA correcte</small>
@@ -234,6 +268,7 @@
 </div>
 
 <script>
+
 const imagesData = [
     {% for image in images.items %}
     {
@@ -261,6 +296,7 @@ function showAnnotateModal(idx) {
     document.getElementById('modalMeta').innerHTML =
         `<b>Dimensions :</b> ${img.width}×${img.height} px | <b>Taille :</b> ${(img.file_size/1024).toFixed(1)} KB | <b>Luminosité :</b> ${Math.round(img.brightness)}<br>` +
         `<b>Date upload :</b> ${img.upload_date}`;
+    // Boutons annotation si en attente
     let btns = '';
     if(img.status === 'pending') {
         btns += `<form method="POST" action="/validate/${img.id}" style="display:inline;">
