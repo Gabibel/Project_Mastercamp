@@ -54,7 +54,7 @@ def dashboard():
     rules_indecis = sum(1 for img in validated if img.ai_prediction not in ['full','empty'])
 
     # Comptage images de training
-    base = current_app.config['TRAINING_FOLDER']
+    base = os.path.join(current_app.root_path, current_app.config['TRAINING_FOLDER'])
     clean_dir = os.path.join(base, 'with_label', 'clean')
     dirty_dir = os.path.join(base, 'with_label', 'dirty')
     empty_training = len([f for f in glob.glob(f"{clean_dir}/*") if f.lower().endswith(('.png','.jpg','.jpeg','.bmp','.gif'))]) if os.path.exists(clean_dir) else 0
