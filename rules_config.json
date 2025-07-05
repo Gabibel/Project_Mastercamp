@@ -1,12 +1,12 @@
 {
-  "brightness_full_max": 171.02509750353522,
-  "brightness_empty_min": 64.52661851117642,
-  "contrast_full_max": 70.39170486727024,
-  "contrast_empty_min": 18.930505417541436,
-  "color_variance_full_max": 1541.416145367293,
-  "color_variance_empty_min": 373.91045763036334,
-  "edge_density_full_max": 0.33342089399350083,
-  "edge_density_empty_min": -0.051013907901757416,
-  "dark_pixel_ratio_full_min": 0.1570235406600966,
-  "dark_pixel_ratio_empty_max": 0.6985804852032718
+  "brightness_full_max": 184.1512878831227,
+  "brightness_empty_min": 33.4699523119363,
+  "contrast_full_max": 88.71896472506305,
+  "contrast_empty_min": 15.309348771874244,
+  "color_variance_full_max": 8120.915046881145,
+  "color_variance_empty_min": 359.94892109095815,
+  "edge_density_full_max": 0.24821538461538462,
+  "edge_density_empty_min": 0.00040633608815427,
+  "dark_pixel_ratio_full_min": 0.0,
+  "dark_pixel_ratio_empty_max": 0.8828028632817506
 }
