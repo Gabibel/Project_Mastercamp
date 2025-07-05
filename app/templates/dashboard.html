@@ -343,23 +343,22 @@ function initAICharts() {
     aiPredictionsChartObj = new Chart(ctx1, {
         type: 'doughnut',
         data: {
-            labels: ['Pleine', 'Vide'],
+            labels: ['Pleine','Vide','Inconnue'],
             datasets: [{
-                data: [aiData.predFull, aiData.predEmpty],
-                backgroundColor: ['#e74c3c', '#2ecc71'],
-                borderWidth: 2,
-                borderColor: '#fff'
+            data: [aiData.predFull, aiData.predEmpty, aiData.predUnknown],
+            backgroundColor: ['#e74c3c','#2ecc71','#95a5a6'],
+            borderWidth: 2,
+            borderColor: '#fff'
             }]
         },
         options: {
             responsive: true,
             plugins: {
-                legend: {
-                    position: 'bottom'
-                }
+            legend: { position: 'bottom' }
             }
         }
-    });
+        });
+
     
     // Graphique performance IA vs validation humaine
     const ctx2 = document.getElementById('aiPerformanceChart').getContext('2d');
