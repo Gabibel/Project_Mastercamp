@@ -3,6 +3,7 @@ import numpy as np
 import os 
 import cv2
 import json
+import pickle
 def analyze_image_advanced(image_path):
     """Analyse avancée de l'image avec de multiples caractéristiques réelles"""
     try:
@@ -253,75 +254,93 @@ def predict_with_advanced_ai(analysis):
     else:
         return 'unknown', max(score_full, score_empty)
 
+import glob
+
+from flask import current_app
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+
+from app.models import KNN_MODEL_FILE, RF_MODEL_FILE, SVM_MODEL_FILE
+
 def train_all_train_folder_ml():
-    X = []
-    y = []
-    clean_dir = os.path.join(app.config['TRAINING_FOLDER'], 'with_label', 'clean')
-    dirty_dir = os.path.join(app.config['TRAINING_FOLDER'], 'with_label', 'dirty')
+    X, y = [], []
+
+    base = current_app.config['TRAINING_FOLDER']
+    clean_dir = os.path.join(base, 'with_label', 'clean')
+    dirty_dir = os.path.join(base, 'with_label', 'dirty')
+
     for img_file in glob.glob(os.path.join(clean_dir, '*')):
         if img_file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
             feats = extract_features_for_knn(img_file)
-            if feats and isinstance(feats, (list, np.ndarray)):
+            if feats is not None and isinstance(feats, (list, np.ndarray)):
                 X.append(feats)
-                y.append(0)  # 0 = empty/clean
+                y.append(0)  # label 0 = empty/clean
             else:
-                print(f"Image ignorée (clean): {img_file} (features invalides)")
+                current_app.logger.warning(f"Ignorée (clean) : {img_file}")
+
     for img_file in glob.glob(os.path.join(dirty_dir, '*')):
         if img_file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
             feats = extract_features_for_knn(img_file)
-            if feats and isinstance(feats, (list, np.ndarray)):
+            if feats is not None and isinstance(feats, (list, np.ndarray)):
                 X.append(feats)
-                y.append(1)  # 1 = full/dirty
+                y.append(1)  # label 1 = full/dirty
             else:
-                print(f"Image ignorée (dirty): {img_file} (features invalides)")
+                current_app.logger.warning(f"Ignorée (dirty) : {img_file}")
+
     if not X:
-        print('Aucune donnée pour entraîner les modèles ML (train folders).')
+        current_app.logger.error("Aucune donnée pour entraîner les modèles ML.")
         return False
-    # Vérification du nombre de features attendu
+
     expected_len = len(X[0])
-    X_clean = []
-    y_clean = []
+    X_clean, y_clean = [], []
     for feats, label in zip(X, y):
-        feats = np.asarray(feats).flatten()
-        if len(feats) == expected_len:
-            X_clean.append(feats)
+        arr = np.asarray(feats).flatten()
+        if arr.shape[0] == expected_len:
+            X_clean.append(arr)
             y_clean.append(label)
         else:
-            print(f"Image ignorée (shape incohérente): {feats.shape}, attendu {expected_len}")
+            current_app.logger.warning(
+                f"Vector incorrect ({arr.shape[0]} vs {expected_len}) pour un fichier de training."
+            )
+
     X = np.array(X_clean)
     y = np.array(y_clean)
-    if len(X) == 0 or len(y) == 0:
-        print("Erreur: aucune donnée exploitable après filtrage.")
+    if X.size == 0:
+        current_app.logger.error("Aucune donnée exploitable après filtrage.")
         return False
-    # Vérification du nombre de classes
-    n_classes = len(np.unique(y))
-    print(f"Nombre d'images clean valides : {sum(1 for label in y if label == 0)}")
-    print(f"Nombre d'images dirty valides : {sum(1 for label in y if label == 1)}")
-    print(f"Nombre total d'images utilisées : {len(y)}")
-    if n_classes < 2:
-        print(f"Erreur : il faut au moins 2 classes pour entraîner les modèles ML (trouvé {n_classes})")
+
+    if len(np.unique(y)) < 2:
+        current_app.logger.error("Besoin d'au moins 2 classes pour l'entraînement.")
         return False
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-    # KNN
+
+    # Normalisation
+    scaler = StandardScaler().fit(X)
+    X_scaled = scaler.transform(X)
+
+    # Entraînement des modèles
     knn = KNeighborsClassifier(n_neighbors=10)
     knn.fit(X_scaled, y)
     with open(KNN_MODEL_FILE, 'wb') as f:
         pickle.dump(knn, f)
-    # Random Forest
+
     rf = RandomForestClassifier(n_estimators=50, random_state=42)
     rf.fit(X_scaled, y)
     with open(RF_MODEL_FILE, 'wb') as f:
         pickle.dump(rf, f)
-    # SVM (avec probas)
+
     svm = SVC(probability=True, kernel='rbf', random_state=42)
     svm.fit(X_scaled, y)
     with open(SVM_MODEL_FILE, 'wb') as f:
         pickle.dump(svm, f)
+
     # Sauvegarde du scaler
-    with open('scaler_ml.pkl', 'wb') as f:
+    scaler_path = os.path.join(current_app.root_path, 'scaler_ml.pkl')
+    with open(scaler_path, 'wb') as f:
         pickle.dump(scaler, f)
-    print(f'Modèles ML entraînés et sauvegardés ({len(X)} images des dossiers train).')
+
+    current_app.logger.info(f"Modèles ML entraînés sur {len(y)} images.")
     return True
 
 RULES_CONFIG_FILE = 'rules_config.json'

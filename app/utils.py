@@ -10,24 +10,9 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 
-from app.analysis import analyze_image_advanced, predict_with_advanced_ai, save_rules_config
+from app.analysis import analyze_image_advanced, predict_with_advanced_ai, save_rules_config, extract_features_for_knn
 from app.models import TrashImage, KNN_MODEL_FILE, RF_MODEL_FILE, SVM_MODEL_FILE
 from app import db
-
-
-def extract_features_for_knn(image_path):
-    features = analyze_image_advanced(image_path)
-    if not features:
-        return None
-    return [
-        features['brightness'],
-        features['contrast'],
-        features['color_variance'],
-        features['edge_density'],
-        features['texture_complexity'],
-        features['dark_pixel_ratio'],
-        features['color_entropy']
-    ]
 
 
 def async_analyze_and_update(trash_image_id, filepath, app):
