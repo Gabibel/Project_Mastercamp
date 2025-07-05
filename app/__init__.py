@@ -15,10 +15,13 @@ def create_app():
     from app.routes.dashboard import dashboard_bp
     from app.routes.rules     import rules_bp
     from app.routes.api       import api_bp
+    from app.static_graph.luminosity import graph_bp   
+
     app.register_blueprint(main_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(rules_bp)
     app.register_blueprint(api_bp)
+    app.register_blueprint(graph_bp)                   
 
     with app.app_context():
         db.create_all()
