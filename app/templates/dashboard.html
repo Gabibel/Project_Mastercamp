@@ -12,22 +12,6 @@
             </h2>
         </div>
     </div>
-    <!-- Filtres -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <label>Filtrer par état :</label>
-            <select id="statusFilter" class="form-select">
-                <option value="all">Tous</option>
-                <option value="full">Pleine</option>
-                <option value="empty">Vide</option>
-                <option value="pending">En attente</option>
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label>Date :</label>
-            <input type="date" id="dateFilter" class="form-control">
-        </div>
-    </div>
     <!-- Statistiques générales -->
     <div class="row g-4 mb-5">
         <div class="col-md-3">
@@ -461,18 +445,6 @@ function updateCharts(data) {
     });
 }
 
-function applyFilters() {
-    const status = document.getElementById('statusFilter').value;  
-    const date   = document.getElementById('dateFilter').value;    
-    const filtered = allData.filter(img => {
-        let ok = true;
-        if (status !== 'all') ok = ok && img.status === status;
-        if (date)            ok = ok && img.date   === date;
-        return ok;
-    });
-    updateCharts(filtered);
-}
-
 // Initialiser les graphiques IA au chargement
 document.addEventListener('DOMContentLoaded', initAICharts);
 
@@ -483,9 +455,6 @@ fetch("{{ url_for('api.api_stats') }}")
         allData = data;
         updateCharts(allData);
     });
-
-document.getElementById('statusFilter').addEventListener('change', applyFilters);
-document.getElementById('dateFilter').addEventListener('change', applyFilters);
 
 // Carte Leaflet
 let map = L.map('trashMap').setView([48.8566, 2.3522], 12);
