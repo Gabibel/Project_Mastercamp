@@ -145,7 +145,8 @@ def train_all_train_folder_ml():
 
 def reset_rules_knn():
     import numpy as np
-    base = current_app.config['TRAINING_FOLDER']
+    base = os.path.join(current_app.root_path, current_app.config['TRAINING_FOLDER'])
+
     def gather(folder): 
         feats = []
         for f in glob.glob(os.path.join(base, 'with_label', folder, '*')):
@@ -155,7 +156,7 @@ def reset_rules_knn():
     clean, dirty = gather('clean'), gather('dirty')
     if clean.size == 0 or dirty.size == 0:
         flash("Pas assez de données pour reset_rules_knn.")
-        return redirect(url_for('rules_bp.rules'))
+        return redirect(url_for('rules.rules'))
 
     thresholds = {
         'brightness_full_max': float(dirty[:,0].max()),
@@ -171,7 +172,7 @@ def reset_rules_knn():
     }
     save_rules_config(thresholds)
     flash("Règles reset_knn effectuées.")
-    return redirect(url_for('rules_bp.rules'))
+    return redirect(url_for('rules.rules'))
 
 def resimuler():
     count = 0
@@ -181,7 +182,7 @@ def resimuler():
             async_analyze_and_update(img.id, path)
             count += 1
     flash(f"Re-simulation lancée sur {count} images.")
-    return redirect(url_for('rules_bp.rules'))
+    return redirect(url_for('rules.rules'))
 
 def resimuler_image(image_id):
     img = TrashImage.query.get_or_404(image_id)
