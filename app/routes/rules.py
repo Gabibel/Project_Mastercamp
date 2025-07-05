@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from app.analysis import load_rules_config, save_rules_config
-from app.utils import train_all_train_folder_ml, reset_rules_knn, resimuler, resimuler_image
+from app.utils import train_all_train_folder_ml, reset_rules, resimuler, resimuler_image
 
 rules_bp = Blueprint('rules', __name__, url_prefix='/rules')
 
@@ -36,9 +36,9 @@ def train_all_validated_ml():
     flash(msg)
     return redirect(url_for('rules.rules'))
 
-@rules_bp.route('/reset_rules_knn')
-def reset_rules_knn_route():
-    return reset_rules_knn()
+@rules_bp.route('/reset_rules')
+def reset_rules_route():
+    return reset_rules()
 
 @rules_bp.route('/resimuler')
 def resimuler_route():

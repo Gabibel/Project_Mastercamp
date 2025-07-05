@@ -143,21 +143,7 @@ def train_all_train_folder_ml():
     pickle.dump(scaler, open(os.path.join(current_app.root_path, 'scaler_ml.pkl'), 'wb'))
     return True
 
-def reset_rules_knn():
-    import numpy as np
-    base = os.path.join(current_app.root_path, current_app.config['TRAINING_FOLDER'])
-
-    def gather(folder): 
-        feats = []
-        for f in glob.glob(os.path.join(base, 'with_label', folder, '*')):
-            v = extract_features_for_knn(f)
-            if v: feats.append(v)
-        return np.array(feats)
-    clean, dirty = gather('clean'), gather('dirty')
-    if clean.size == 0 or dirty.size == 0:
-        flash("Pas assez de données pour reset_rules_knn.")
-        return redirect(url_for('rules.rules'))
-
+def reset_rules():
     thresholds = {
         'brightness_full_max': 171,
         'brightness_empty_min': 64.5,
@@ -171,7 +157,7 @@ def reset_rules_knn():
         'dark_pixel_ratio_empty_max': 0.7,
     }
     save_rules_config(thresholds)
-    flash("Règles reset_knn effectuées.")
+    flash("Règles reset effectuées.")
     return redirect(url_for('rules.rules'))
 
 def resimuler():
