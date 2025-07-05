@@ -343,7 +343,7 @@ function initAICharts() {
     aiPredictionsChartObj = new Chart(ctx1, {
         type: 'doughnut',
         data: {
-            labels: ['Pleine','Vide','Inconnue'],
+            labels: ['Pleine','Vide','Image Non conforme'],
             datasets: [{
             data: [aiData.predFull, aiData.predEmpty, aiData.predUnknown],
             backgroundColor: ['#e74c3c','#2ecc71','#95a5a6'],

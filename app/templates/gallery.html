@@ -41,7 +41,7 @@
                                     <i class="fas fa-clock me-1"></i>En attente
                                 </a>
                                 <a href="{{ url_for('main.gallery', status='unknown') }}" class="btn btn-outline-secondary {{ 'active' if status_filter == 'unknown' else '' }}">
-                                    <i class="fas fa-question-circle me-1"></i>Incertaines
+                                    <i class="fas fa-question-circle me-1"></i>Image non conforme
                                 </a>
                             </div>
                         </div>
@@ -66,7 +66,7 @@
                             {% elif image.status == 'pending' %}
                                 <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>En attente</span>
                             {% elif image.ai_prediction == 'unknown' %}
-                                <span class="badge bg-secondary"><i class="fas fa-question-circle me-1"></i>Incertaine</span>
+                                <span class="badge bg-secondary"><i class="fas fa-question-circle me-1"></i>Image non conforme</span>
                             {% else %}
                                 <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>En attente</span>
                             {% endif %}
@@ -79,10 +79,22 @@
                         <!-- Prédiction par règles (EN HAUT) -->
                         <div class="row mb-2">
                             <div class="col-12 text-center">
-                                <span class="badge bg-info text-dark fs-5 px-4 py-2 w-100 mb-2"><i class="fas fa-cogs me-1"></i>Règles {{ image.ai_prediction|title if image.ai_prediction else 'N/A' }}</span><br>
-                                <small class="text-muted">Confiance : {% if image.ai_confidence is not none %}{{ (image.ai_confidence * 100)|round(1) }}%{% else %}N/A{% endif %}</small>
+                                {% set pred = image.ai_prediction %}
+                                {% set label = pred == 'unknown' and ': Image Non conforme' or (pred|title if pred else 'N/A') %}
+                                <span class="badge bg-info text-dark fs-5 px-4 py-2 w-100 mb-2">
+                                <i class="fas fa-cogs me-1"></i>Règles {{ label }}
+                                </span><br>
+                                <small class="text-muted">
+                                Confiance :
+                                {% if image.ai_confidence is not none %}
+                                    {{ (image.ai_confidence * 100)|round(1) }}%
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                                </small>
                             </div>
                         </div>
+
                         <!-- Résultat final ML (vote) en dessous -->
                         <div class="row mb-2">
                             <div class="col-12 text-center">

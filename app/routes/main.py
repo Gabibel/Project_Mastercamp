@@ -462,18 +462,25 @@ def audit():
     audit_results = []
     for img in images:
         anomalies = []
-        filepath = os.path.join(current_app.root_path, current_app.config['UPLOAD_FOLDER'], img.filename)
+        filepath = os.path.join(current_app.root_path,
+                                current_app.config['UPLOAD_FOLDER'],
+                                img.filename)
         if not os.path.exists(filepath):
             anomalies.append("Fichier manquant")
+        if img.ai_prediction == 'unknown':
+            anomalies.append("Image non conforme aux règles")
         audit_results.append({"image": img, "anomalies": anomalies})
 
     stats = {}
-    features = ["brightness", "contrast", "color_variance", "edge_density", "texture_complexity", "dark_pixel_ratio", "color_entropy"]
+    features = ["brightness", "contrast", "color_variance",
+                "edge_density", "texture_complexity",
+                "dark_pixel_ratio", "color_entropy"]
     for classe in ["full", "empty"]:
         classe_imgs = [i for i in images if i.status == classe]
         stats[classe] = {}
         for feat in features:
-            vals = [getattr(i, feat) for i in classe_imgs if getattr(i, feat) is not None]
+            vals = [getattr(i, feat) for i in classe_imgs
+                    if getattr(i, feat) is not None]
             stats[classe][feat] = {
                 "mean": float(np.mean(vals)) if vals else None,
                 "std":  float(np.std(vals))  if vals else None,
@@ -481,5 +488,5 @@ def audit():
             }
 
     return render_template('audit.html',
-                            audit_results=audit_results,
-                            feature_stats=stats)
+                           audit_results=audit_results,
+                           feature_stats=stats)
