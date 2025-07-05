@@ -76,23 +76,23 @@
                         <h6 class="card-title">{{ image.original_filename[:30] }}{% if image.original_filename|length > 30 %}...{% endif %}</h6>
                         <p class="card-text text-muted small"><i class="fas fa-calendar me-1"></i>{{ image.upload_date.strftime('%d/%m/%Y %H:%M') }}</p>
                         
-                        <!-- Résultat final ML (vote) en haut -->
+                        <!-- Prédiction par règles (EN HAUT) -->
+                        <div class="row mb-2">
+                            <div class="col-12 text-center">
+                                <span class="badge bg-info text-dark fs-5 px-4 py-2 w-100 mb-2"><i class="fas fa-cogs me-1"></i>Règles {{ image.ai_prediction|title if image.ai_prediction else 'N/A' }}</span><br>
+                                <small class="text-muted">Confiance : {% if image.ai_confidence is not none %}{{ (image.ai_confidence * 100)|round(1) }}%{% else %}N/A{% endif %}</small>
+                            </div>
+                        </div>
+                        <!-- Résultat final ML (vote) en dessous -->
                         <div class="row mb-2">
                             <div class="col-12 text-center">
                                 {% if image.ml_vote == 'full' %}
-                                    <span class="badge bg-danger fs-5 px-4 py-2"><i class="fas fa-vote-yea me-2"></i>Vote final : Pleine</span>
+                                    <span class="badge bg-danger fs-5 px-4 py-2 w-100 mb-2"><i class="fas fa-vote-yea me-2"></i>Vote final : Pleine</span>
                                 {% elif image.ml_vote == 'empty' %}
-                                    <span class="badge bg-success fs-5 px-4 py-2"><i class="fas fa-vote-yea me-2"></i>Vote final : Vide</span>
+                                    <span class="badge bg-success fs-5 px-4 py-2 w-100 mb-2"><i class="fas fa-vote-yea me-2"></i>Vote final : Vide</span>
                                 {% else %}
-                                    <span class="badge bg-secondary fs-5 px-4 py-2"><i class="fas fa-vote-yea me-2"></i>Vote final : N/A</span>
+                                    <span class="badge bg-secondary fs-5 px-4 py-2 w-100 mb-2"><i class="fas fa-vote-yea me-2"></i>Vote final : N/A</span>
                                 {% endif %}
-                            </div>
-                        </div>
-                        <!-- Prédiction par règles -->
-                        <div class="row text-center mb-2">
-                            <div class="col-12">
-                                <span class="badge bg-info text-dark"><i class="fas fa-cogs me-1"></i>Règles<br>{{ image.ai_prediction|title if image.ai_prediction else 'N/A' }}</span><br>
-                                <small class="text-muted">Confiance : {% if image.ai_confidence is not none %}{{ (image.ai_confidence * 100)|round(1) }}%{% else %}N/A{% endif %}</small>
                             </div>
                         </div>
                         <!-- Résultats Machine Learning -->

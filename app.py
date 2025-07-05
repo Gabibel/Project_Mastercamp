@@ -627,7 +627,7 @@ def predict_with_advanced_ai(analysis):
         'brightness': 0.04,
         'contrast': 0.13,
         'color_variance': 0.13,
-        'edge_density': 0.32,
+        'edge_density': 0.40,
         'texture_complexity': 0.20,
         'dark_pixel_ratio': 0.06,
         'color_entropy': 0.13
@@ -1008,6 +1008,22 @@ def resimuler():
     for img in images:
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], img.filename)
         if os.path.exists(filepath):
+            # Réinitialiser complètement l'image comme si elle venait d'être insérée
+            img.status = 'pending'
+            img.manual_status = None
+            img.ai_prediction = None
+            img.ai_confidence = None
+            img.ai_validated = False
+            img.ai_correct = None
+            img.knn_prediction = None
+            img.knn_confidence = None
+            img.rf_prediction = None
+            img.rf_confidence = None
+            img.svm_prediction = None
+            img.svm_confidence = None
+            img.ml_vote = None
+            img.ml_correct = None
+            
             analysis = analyze_image_advanced(filepath)
             if analysis:
                 rule_prediction, rule_confidence = predict_with_advanced_ai(analysis)
@@ -1067,7 +1083,6 @@ def resimuler():
                 img.svm_prediction = svm_pred
                 img.svm_confidence = svm_conf
                 img.ml_vote = ml_vote
-                img.status = 'pending'
                 count += 1
     db.session.commit()
     flash(f"Simulation relancée sur {count} images.")
@@ -1078,6 +1093,22 @@ def resimuler_image(image_id):
     img = TrashImage.query.get_or_404(image_id)
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], img.filename)
     if os.path.exists(filepath):
+        # Réinitialiser complètement l'image comme si elle venait d'être insérée
+        img.status = 'pending'
+        img.manual_status = None
+        img.ai_prediction = None
+        img.ai_confidence = None
+        img.ai_validated = False
+        img.ai_correct = None
+        img.knn_prediction = None
+        img.knn_confidence = None
+        img.rf_prediction = None
+        img.rf_confidence = None
+        img.svm_prediction = None
+        img.svm_confidence = None
+        img.ml_vote = None
+        img.ml_correct = None
+        
         analysis = analyze_image_advanced(filepath)
         if analysis:
             rule_prediction, rule_confidence = predict_with_advanced_ai(analysis)
@@ -1137,7 +1168,6 @@ def resimuler_image(image_id):
             img.svm_prediction = svm_pred
             img.svm_confidence = svm_conf
             img.ml_vote = ml_vote
-            img.status = 'pending'
             db.session.commit()
             flash("Analyse IA/ML relancée pour cette image.")
     else:
@@ -1186,6 +1216,22 @@ def resimuler_image_ajax(image_id):
     img = TrashImage.query.get_or_404(image_id)
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], img.filename)
     if os.path.exists(filepath):
+        # Réinitialiser complètement l'image comme si elle venait d'être insérée
+        img.status = 'pending'
+        img.manual_status = None
+        img.ai_prediction = None
+        img.ai_confidence = None
+        img.ai_validated = False
+        img.ai_correct = None
+        img.knn_prediction = None
+        img.knn_confidence = None
+        img.rf_prediction = None
+        img.rf_confidence = None
+        img.svm_prediction = None
+        img.svm_confidence = None
+        img.ml_vote = None
+        img.ml_correct = None
+        
         analysis = analyze_image_advanced(filepath)
         if analysis:
             rule_prediction, rule_confidence = predict_with_advanced_ai(analysis)
@@ -1245,7 +1291,6 @@ def resimuler_image_ajax(image_id):
             img.svm_prediction = svm_pred
             img.svm_confidence = svm_conf
             img.ml_vote = ml_vote
-            img.status = 'pending'
             db.session.commit()
             # Préparer la réponse JSON pour mise à jour dynamique
             badge = ''

@@ -202,7 +202,23 @@ def resimuler_image_ajax(image_id):
     filepath      = os.path.join(upload_folder, img.filename)
     if not os.path.exists(filepath):
         return jsonify({'success': False, 'error': 'Fichier introuvable'}), 404
-    print("test")
+    
+    # Réinitialiser complètement l'image comme si elle venait d'être insérée
+    img.status = 'pending'
+    img.manual_status = None
+    img.ai_prediction = None
+    img.ai_confidence = None
+    img.ai_validated = False
+    img.ai_correct = None
+    img.knn_prediction = None
+    img.knn_confidence = None
+    img.rf_prediction = None
+    img.rf_confidence = None
+    img.svm_prediction = None
+    img.svm_confidence = None
+    img.ml_vote = None
+    img.ml_correct = None
+    
     analysis = analyze_image_advanced(filepath)
     if not analysis:
         return jsonify({'success': False, 'error': 'Analyse impossible'}), 500
@@ -278,7 +294,6 @@ def resimuler_image_ajax(image_id):
     img.svm_prediction  = svm_pred
     img.svm_confidence  = svm_conf
     img.ml_vote         = ml_vote
-    img.status          = 'pending'
     db.session.commit()
 
     # Préparer le badge HTML
@@ -356,6 +371,22 @@ def resimuler():
         upload_folder = os.path.join(current_app.root_path, current_app.config['UPLOAD_FOLDER'])
         filepath      = os.path.join(upload_folder, img.filename)
         if os.path.exists(filepath):
+            # Réinitialiser complètement l'image comme si elle venait d'être insérée
+            img.status = 'pending'
+            img.manual_status = None
+            img.ai_prediction = None
+            img.ai_confidence = None
+            img.ai_validated = False
+            img.ai_correct = None
+            img.knn_prediction = None
+            img.knn_confidence = None
+            img.rf_prediction = None
+            img.rf_confidence = None
+            img.svm_prediction = None
+            img.svm_confidence = None
+            img.ml_vote = None
+            img.ml_correct = None
+            
             analysis = analyze_image_advanced(filepath)
             if analysis:
                 rule_prediction, rule_confidence = predict_with_advanced_ai(analysis)
@@ -415,7 +446,6 @@ def resimuler():
                 img.svm_prediction = svm_pred
                 img.svm_confidence = svm_conf
                 img.ml_vote = ml_vote
-                img.status = 'pending'
                 count += 1
     db.session.commit()
     flash(f"Simulation relancée sur {count} images.")
