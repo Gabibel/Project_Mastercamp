@@ -30,6 +30,14 @@
                class="btn btn-outline-info ms-2">
                 Entraîner avec les data dans train
             </a>
+            <a href="{{ url_for('main.resimuler') }}"
+               class="btn btn-outline-warning ms-2">
+                <i class="fas fa-redo me-2"></i>Relancer la simulation
+            </a>
+            <a href="{{ url_for('rules.reset_rules_knn_route') }}"
+                class="btn btn-outline-danger ms-2">
+                <i class="fas fa-sync-alt me-2"></i>Réinitialiser règles KNN
+            </a>
         </div>
     </form>
     {% with messages = get_flashed_messages() %}

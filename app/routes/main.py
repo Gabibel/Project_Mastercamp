@@ -350,6 +350,78 @@ def validate_prediction_ajax(image_id):
     else:
         return jsonify({'success': False, 'error': 'Statut invalide'})
 
+@main_bp.route('/resimuler')
+def resimuler():
+    images = TrashImage.query.all()
+    count = 0
+    for img in images:
+        upload_folder = os.path.join(current_app.root_path, current_app.config['UPLOAD_FOLDER'])
+        filepath      = os.path.join(upload_folder, img.filename)
+        if os.path.exists(filepath):
+            analysis = analyze_image_advanced(filepath)
+            if analysis:
+                rule_prediction, rule_confidence = predict_with_advanced_ai(analysis)
+                feats = [
+                    analysis['brightness'],
+                    analysis['contrast'],
+                    analysis['color_variance'],
+                    analysis['edge_density'],
+                    analysis['texture_complexity'],
+                    analysis['dark_pixel_ratio'],
+                    analysis['color_entropy']
+                ]
+                knn_pred = rf_pred = svm_pred = None
+                knn_conf = rf_conf = svm_conf = None
+                try:
+                    scaler = None
+                    if os.path.exists('scaler_ml.pkl'):
+                        with open('scaler_ml.pkl', 'rb') as f:
+                            scaler = pickle.load(f)
+                    feats_scaled = scaler.transform([feats]) if scaler else [feats]
+                    if os.path.exists(KNN_MODEL_FILE):
+                        with open(KNN_MODEL_FILE, 'rb') as f:
+                            knn = pickle.load(f)
+                        proba = knn.predict_proba(feats_scaled)[0]
+                        pred = knn.predict(feats_scaled)[0]
+                        knn_pred = 'empty' if pred == 0 else 'full'
+                        knn_conf = float(np.max(proba))
+                    if os.path.exists(RF_MODEL_FILE):
+                        with open(RF_MODEL_FILE, 'rb') as f:
+                            rf = pickle.load(f)
+                        proba = rf.predict_proba(feats_scaled)[0]
+                        pred = rf.predict(feats_scaled)[0]
+                        rf_pred = 'empty' if pred == 0 else 'full'
+                        rf_conf = float(np.max(proba))
+                    if os.path.exists(SVM_MODEL_FILE):
+                        with open(SVM_MODEL_FILE, 'rb') as f:
+                            svm = pickle.load(f)
+                        proba = svm.predict_proba(feats_scaled)[0]
+                        pred = svm.predict(feats_scaled)[0]
+                        svm_pred = 'empty' if pred == 0 else 'full'
+                        svm_conf = float(np.max(proba))
+                except Exception as e:
+                    print(f"Erreur prédiction ML (resimuler) : {e}")
+                votes = [p for p in [knn_pred, rf_pred, svm_pred] if p in ['full', 'empty']]
+                if votes:
+                    ml_vote = max(set(votes), key=votes.count)
+                else:
+                    ml_vote = None
+                for k, v in analysis.items():
+                    setattr(img, k, v)
+                img.ai_prediction = rule_prediction
+                img.ai_confidence = rule_confidence
+                img.knn_prediction = knn_pred
+                img.knn_confidence = knn_conf
+                img.rf_prediction = rf_pred
+                img.rf_confidence = rf_conf
+                img.svm_prediction = svm_pred
+                img.svm_confidence = svm_conf
+                img.ml_vote = ml_vote
+                img.status = 'pending'
+                count += 1
+    db.session.commit()
+    flash(f"Simulation relancée sur {count} images.")
+    return redirect(url_for('rules.rules'))
 
 
 from flask import render_template
