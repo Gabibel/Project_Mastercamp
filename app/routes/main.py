@@ -35,6 +35,7 @@ def index():
 
 from PIL import Image
 import threading
+
 @main_bp.route('/upload', methods=['GET', 'POST'])
 def upload():
     if request.method == 'POST':
@@ -79,7 +80,7 @@ def upload():
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             filename = f"{timestamp}_{filename}"
             upload_folder = os.path.join(current_app.root_path, current_app.config['UPLOAD_FOLDER'])
-            filepath      = os.path.join(upload_folder, img.filename)
+            filepath      = os.path.join(upload_folder, filename)
             file.save(filepath)
             # Compression d'image après upload
             try:
@@ -113,13 +114,14 @@ def upload():
             )
             db.session.add(trash_image)
             db.session.commit()
-            threading.Thread(target=async_analyze_and_update, args=(trash_image.id, filepath)).start()
+            app = current_app._get_current_object()
+            threading.Thread(target=async_analyze_and_update,args=(trash_image.id, filepath, app),daemon=True).start()
             results.append(f"<b>{file.filename}</b> : uploadé, analyse en cours...")
         if results:
             flash('Résultats upload :<br>' + '<br>'.join(results))
         else:
             flash('Aucune image valide uploadée')
-        return redirect(url_for('gallery'))
+        return redirect(url_for('main.gallery'))
     return render_template('upload.html')
 
 @main_bp.route('/gallery')
@@ -166,7 +168,8 @@ def validate_prediction(image_id):
 @main_bp.route('/delete/<int:image_id>', methods=['POST'])
 def delete_image(image_id):
     img = TrashImage.query.get_or_404(image_id)
-    path = os.path.join(current_app.config['UPLOAD_FOLDER'], img.filename)
+    upload_folder = os.path.join(current_app.root_path, current_app.config['UPLOAD_FOLDER'])
+    path = os.path.join(upload_folder, img.filename)
     if os.path.exists(path):
         os.remove(path)
     db.session.delete(img)

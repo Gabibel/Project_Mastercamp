@@ -29,9 +29,10 @@ def extract_features_for_knn(image_path):
         features['color_entropy']
     ]
 
-def async_analyze_and_update(trash_image_id, filepath):
+
+def async_analyze_and_update(trash_image_id, filepath, app):
     def worker():
-        with current_app.app_context():
+        with app.app_context():
             img = TrashImage.query.get(trash_image_id)
             if not img:
                 return
@@ -40,47 +41,60 @@ def async_analyze_and_update(trash_image_id, filepath):
             if not analysis:
                 return
 
-            # IA par règles
+            # prédiction par règles
             rule_pred, rule_conf = predict_with_advanced_ai(analysis)
 
-            # ML
-            feats = extract_features_for_knn(filepath)
+            # extraction ML
+            feats = [
+                analysis['brightness'],
+                analysis['contrast'],
+                analysis['color_variance'],
+                analysis['edge_density'],
+                analysis['texture_complexity'],
+                analysis['dark_pixel_ratio'],
+                analysis['color_entropy']
+            ]
+
             knn_pred = rf_pred = svm_pred = None
             knn_conf = rf_conf = svm_conf = None
-            try:
-                # scaler
-                scaler_path = os.path.join(current_app.root_path, 'scaler_ml.pkl')
-                scaler = pickle.load(open(scaler_path, 'rb')) if os.path.exists(scaler_path) else None
-                feats_scaled = scaler.transform([feats]) if scaler and feats else [feats]
 
-                # KNN
-                if os.path.exists(KNN_MODEL_FILE):
-                    knn = pickle.load(open(KNN_MODEL_FILE, 'rb'))
-                    proba = knn.predict_proba(feats_scaled)[0]
-                    p = knn.predict(feats_scaled)[0]
-                    knn_pred, knn_conf = ('empty' if p == 0 else 'full', float(proba.max()))
+            # chargéé du scaler
+            scaler_path = os.path.join(app.root_path, 'scaler_ml.pkl')
+            scaler = None
+            if os.path.exists(scaler_path):
+                with open(scaler_path, 'rb') as f:
+                    scaler = pickle.load(f)
+            feats_scaled = scaler.transform([feats]) if scaler else [feats]
 
-                # RF
-                if os.path.exists(RF_MODEL_FILE):
-                    rf = pickle.load(open(RF_MODEL_FILE, 'rb'))
-                    proba = rf.predict_proba(feats_scaled)[0]
-                    p = rf.predict(feats_scaled)[0]
-                    rf_pred, rf_conf = ('empty' if p == 0 else 'full', float(proba.max()))
+            # KNN
+            if os.path.exists(KNN_MODEL_FILE):
+                with open(KNN_MODEL_FILE, 'rb') as f:
+                    knn = pickle.load(f)
+                proba = knn.predict_proba(feats_scaled)[0]
+                p = knn.predict(feats_scaled)[0]
+                knn_pred, knn_conf = ('empty' if p==0 else 'full', float(proba.max()))
 
-                # SVM
-                if os.path.exists(SVM_MODEL_FILE):
-                    svm = pickle.load(open(SVM_MODEL_FILE, 'rb'))
-                    proba = svm.predict_proba(feats_scaled)[0]
-                    p = svm.predict(feats_scaled)[0]
-                    svm_pred, svm_conf = ('empty' if p == 0 else 'full', float(proba.max()))
+            # RF
+            if os.path.exists(RF_MODEL_FILE):
+                with open(RF_MODEL_FILE, 'rb') as f:
+                    rf = pickle.load(f)
+                proba = rf.predict_proba(feats_scaled)[0]
+                p = rf.predict(feats_scaled)[0]
+                rf_pred, rf_conf = ('empty' if p==0 else 'full', float(proba.max()))
 
-            except Exception as e:
-                current_app.logger.error(f"ML prediction error: {e}")
+            # SVM
+            if os.path.exists(SVM_MODEL_FILE):
+                with open(SVM_MODEL_FILE, 'rb') as f:
+                    svm = pickle.load(f)
+                proba = svm.predict_proba(feats_scaled)[0]
+                p = svm.predict(feats_scaled)[0]
+                svm_pred, svm_conf = ('empty' if p==0 else 'full', float(proba.max()))
 
+            # vote majoritaire
             votes = [v for v in (knn_pred, rf_pred, svm_pred) if v in ('full','empty')]
             ml_vote = max(set(votes), key=votes.count) if votes else None
 
-            # Mise à jour
+            # mise à jour
             for k, v in analysis.items():
                 setattr(img, k, v)
             img.ai_prediction, img.ai_confidence = rule_pred, rule_conf
@@ -91,6 +105,7 @@ def async_analyze_and_update(trash_image_id, filepath):
             img.status  = 'pending'
             db.session.commit()
 
+    # on démarre le thread
     threading.Thread(target=worker, daemon=True).start()
 
 def train_all_train_folder_ml():
