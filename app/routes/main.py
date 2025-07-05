@@ -181,11 +181,9 @@ from flask import send_from_directory
 
 @main_bp.route('/uploads/<path:filename>')
 def uploaded_file(filename):
-    # Envoie simplement le fichier depuis UPLOAD_FOLDER
-    return send_from_directory(
-        current_app.config['UPLOAD_FOLDER'],
-        filename
-    )
+    upload_folder = os.path.join(current_app.root_path, current_app.config['UPLOAD_FOLDER'])
+    print(upload_folder)
+    return send_from_directory(upload_folder, filename)
 
 import os
 import pickle
@@ -434,13 +432,11 @@ def audit():
     audit_results = []
     for img in images:
         anomalies = []
-        filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], img.filename)
+        filepath = os.path.join(current_app.root_path, current_app.config['UPLOAD_FOLDER'], img.filename)
         if not os.path.exists(filepath):
             anomalies.append("Fichier manquant")
-        # … le reste de votre détection d’anomalies …
         audit_results.append({"image": img, "anomalies": anomalies})
 
-    # calcul des stats des features par classe (full/empty)
     stats = {}
     features = ["brightness", "contrast", "color_variance", "edge_density", "texture_complexity", "dark_pixel_ratio", "color_entropy"]
     for classe in ["full", "empty"]:
