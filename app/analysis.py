@@ -92,20 +92,18 @@ def predict_with_advanced_ai(analysis):
         'color_entropy': 0.13
     }
 
-    # Seuils plus symétriques et moins stricts (ajustés)
     thresholds = load_rules_config() or {
-        'brightness_full_max': 160,
-        'brightness_empty_min': 110,
-        'contrast_full_max': 55,
-        'contrast_empty_min': 28,
-        'color_variance_full_max': 1500,
-        'color_variance_empty_min': 700,
-        'edge_density_full_max': 0.35,
-        'edge_density_empty_min': 0.10,
-        'dark_pixel_ratio_full_min': 0.10,
-        'dark_pixel_ratio_empty_max': 0.32
+        "brightness_full_max": 171.02509750353522,
+        "brightness_empty_min": 64.52661851117642,
+        "contrast_full_max": 70.39170486727024,
+        "contrast_empty_min": 18.930505417541436,
+        "color_variance_full_max": 1541.416145367293,
+        "color_variance_empty_min": 373.91045763036334,
+        "edge_density_full_max": 0.33342089399350083,
+        "edge_density_empty_min": -0.051013907901757416,
+        "dark_pixel_ratio_full_min": 0.1570235406600966,
+        "dark_pixel_ratio_empty_max": 0.6985804852032718
     }
-
     features = {
         'brightness': analysis['brightness'],
         'contrast': analysis['contrast'],

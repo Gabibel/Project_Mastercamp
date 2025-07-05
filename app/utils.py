@@ -159,16 +159,16 @@ def reset_rules_knn():
         return redirect(url_for('rules.rules'))
 
     thresholds = {
-        'brightness_full_max': float(dirty[:,0].max()),
-        'brightness_empty_min': float(clean[:,0].min()),
-        'contrast_full_max':    float(dirty[:,1].max()),
-        'contrast_empty_min':   float(clean[:,1].min()),
-        'color_variance_full_max': float(dirty[:,2].max()),
-        'color_variance_empty_min': float(clean[:,2].min()),
-        'edge_density_full_max':   float(dirty[:,3].max()),
-        'edge_density_empty_min':  float(clean[:,3].min()),
-        'dark_pixel_ratio_full_min': float(dirty[:,5].min()),
-        'dark_pixel_ratio_empty_max': float(clean[:,5].max()),
+        'brightness_full_max': 171,
+        'brightness_empty_min': 64.5,
+        'contrast_full_max':    70.4,
+        'contrast_empty_min':   19,
+        'color_variance_full_max': 1541.4,
+        'color_variance_empty_min': 374,
+        'edge_density_full_max':   0.33,
+        'edge_density_empty_min':  -0.05,
+        'dark_pixel_ratio_full_min': 0.157,
+        'dark_pixel_ratio_empty_max': 0.7,
     }
     save_rules_config(thresholds)
     flash("Règles reset_knn effectuées.")
