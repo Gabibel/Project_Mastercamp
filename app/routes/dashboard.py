@@ -54,15 +54,9 @@ def dashboard():
     rules_indecis = sum(1 for img in validated if img.ai_prediction not in ['full','empty'])
 
     # Comptage images de training
-    # Récupère le chemin absolu du dossier du projet (là où se trouve run.py)
-    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-    # Dossier d'entraînement relatif à la racine du projet
-    training_folder = os.path.join(PROJECT_ROOT, 'training_data')
-
-    clean_dir = os.path.join(training_folder, 'with_label', 'clean')
-    dirty_dir = os.path.join(training_folder, 'with_label', 'dirty')
-
+    base = os.path.join(current_app.root_path, current_app.config['TRAINING_FOLDER'])
+    clean_dir = os.path.join(base, 'with_label', 'clean')
+    dirty_dir = os.path.join(base, 'with_label', 'dirty')
     empty_training = len([f for f in glob.glob(f"{clean_dir}/*") if f.lower().endswith(('.png','.jpg','.jpeg','.bmp','.gif'))]) if os.path.exists(clean_dir) else 0
     full_training  = len([f for f in glob.glob(f"{dirty_dir}/*") if f.lower().endswith(('.png','.jpg','.jpeg','.bmp','.gif'))]) if os.path.exists(dirty_dir) else 0
 
