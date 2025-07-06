@@ -23,12 +23,13 @@ def dashboard():
     ml_accuracy  = (ml_correct / total_validated * 100) if total_validated else 0
 
     # Répartition des prédictions IA (avant validation)
-    all_ai = TrashImage.query.filter(TrashImage.ai_prediction.isnot(None)).all()
-    ai_pred_full   = sum(1 for img in all_ai if img.ai_prediction == 'full')
-    ai_pred_empty  = sum(1 for img in all_ai if img.ai_prediction == 'empty')
-    ai_pred_unknown = sum(1 for img in validated if img.ai_prediction not in ['full','empty'])
-
-    # Précision par classe (vote ML)
+    ai_pred_full  = TrashImage.query.filter_by(ai_prediction='full').count()
+    ai_pred_empty = TrashImage.query.filter_by(ai_prediction='empty').count()
+    ai_pred_unknown = TrashImage.query.filter(
+    TrashImage.ai_prediction.isnot(None),
+    TrashImage.ai_prediction.notin_(['full', 'empty'])
+).count()
+    # Précision par classe ( les votes ML)
     full_validated  = [img for img in validated if img.ml_vote == 'full']
     empty_validated = [img for img in validated if img.ml_vote == 'empty']
     full_correct = sum(1 for img in full_validated if img.ml_correct)
@@ -36,7 +37,7 @@ def dashboard():
     full_accuracy  = (full_correct  / len(full_validated) * 100) if full_validated else 0
     empty_accuracy = (empty_correct / len(empty_validated) * 100) if empty_validated else 0
 
-    # Comparaison modèles
+    # Comparaison des modèles
     def metrics(pred_attr):
         preds = [getattr(img, pred_attr) for img in validated if getattr(img, pred_attr) in ['full','empty']]
         truths = [img.manual_status         for img in validated if getattr(img, pred_attr) in ['full','empty']]
@@ -59,10 +60,6 @@ def dashboard():
     dirty_dir = os.path.join(base, 'with_label', 'dirty')
     empty_training = len([f for f in glob.glob(f"{clean_dir}/*") if f.lower().endswith(('.png','.jpg','.jpeg','.bmp','.gif'))]) if os.path.exists(clean_dir) else 0
     full_training  = len([f for f in glob.glob(f"{dirty_dir}/*") if f.lower().endswith(('.png','.jpg','.jpeg','.bmp','.gif'))]) if os.path.exists(dirty_dir) else 0
-
-    print("clean_dir =", clean_dir)
-    print("os.path.exists(clean_dir) =", os.path.exists(clean_dir))
-    print("Images trouvées :", [f for f in glob.glob(f"{clean_dir}/*") if f.lower().endswith(('.png','.jpg','.jpeg','.bmp','.gif'))])
 
     return render_template('dashboard.html',
         total_images=total_images,

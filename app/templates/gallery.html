@@ -41,7 +41,7 @@
                                     <i class="fas fa-clock me-1"></i>En attente
                                 </a>
                                 <a href="{{ url_for('main.gallery', status='unknown') }}" class="btn btn-outline-secondary {{ 'active' if status_filter == 'unknown' else '' }}">
-                                    <i class="fas fa-question-circle me-1"></i>Incertaines
+                                    <i class="fas fa-question-circle me-1"></i>Image non conforme
                                 </a>
                             </div>
                         </div>
@@ -50,7 +50,7 @@
             </div>
         </div>
     </div>
-    <!-- Grille d'images -->
+    <!-- Images -->
     {% if images.items %}
         <div class="row g-4">
             {% for image in images.items %}
@@ -66,7 +66,7 @@
                             {% elif image.status == 'pending' %}
                                 <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>En attente</span>
                             {% elif image.ai_prediction == 'unknown' %}
-                                <span class="badge bg-secondary"><i class="fas fa-question-circle me-1"></i>Incertaine</span>
+                                <span class="badge bg-secondary"><i class="fas fa-question-circle me-1"></i>Image non conforme</span>
                             {% else %}
                                 <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>En attente</span>
                             {% endif %}
@@ -76,14 +76,34 @@
                         <h6 class="card-title">{{ image.original_filename[:30] }}{% if image.original_filename|length > 30 %}...{% endif %}</h6>
                         <p class="card-text text-muted small"><i class="fas fa-calendar me-1"></i>{{ image.upload_date.strftime('%d/%m/%Y %H:%M') }}</p>
                         
-                        <!-- Prédiction par règles (EN HAUT) -->
+                        <!-- Prédiction par règles -->
                         <div class="row mb-2">
                             <div class="col-12 text-center">
-                                <span class="badge bg-info text-dark fs-5 px-4 py-2 w-100 mb-2"><i class="fas fa-cogs me-1"></i>Règles {{ image.ai_prediction|title if image.ai_prediction else 'N/A' }}</span><br>
-                                <small class="text-muted">Confiance : {% if image.ai_confidence is not none %}{{ (image.ai_confidence * 100)|round(1) }}%{% else %}N/A{% endif %}</small>
+                                {% set pred = image.ai_prediction %}
+                                {% if pred == 'full' %}
+                                    {% set label = 'Pleine' %}
+                                {% elif pred == 'empty' %}
+                                    {% set label = 'Vide' %}
+                                {% elif pred == 'unknown' %}
+                                    {% set label = 'Image non conforme' %}
+                                {% else %}
+                                    {% set label = 'N/A' %}
+                                {% endif %}
+                                <span class="badge bg-info text-dark fs-5 px-4 py-2 w-100 mb-2">
+                                <i class="fas fa-cogs me-1"></i>Règles {{ label }}
+                                </span><br>
+                                <small class="text-muted">
+                                Confiance :
+                                {% if image.ai_confidence is not none %}
+                                    {{ (image.ai_confidence * 100)|round(1) }}%
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                                </small>
                             </div>
                         </div>
-                        <!-- Résultat final ML (vote) en dessous -->
+
+                        <!-- Résultat final ML -->
                         <div class="row mb-2">
                             <div class="col-12 text-center">
                                 {% if image.ml_vote == 'full' %}
@@ -95,23 +115,49 @@
                                 {% endif %}
                             </div>
                         </div>
-                        <!-- Résultats Machine Learning -->
+                        <!-- Résultats ML -->
                         <div class="row text-center mb-2">
+                            {# KNN #}
+                            {% if image.knn_prediction == 'full' %}
+                                {% set knn_label = 'Pleine' %}
+                            {% elif image.knn_prediction == 'empty' %}
+                                {% set knn_label = 'Vide' %}
+                            {% else %}
+                                {% set knn_label = 'N/A' %}
+                            {% endif %}
                             <div class="col-4">
-                                <span class="badge bg-primary"><i class="fas fa-user-friends me-1"></i>KNN<br>{{ image.knn_prediction|title if image.knn_prediction else 'N/A' }}</span><br>
+                                <span class="badge bg-primary"><i class="fas fa-user-friends me-1"></i>KNN<br>{{ knn_label }}</span><br>
                                 <small class="text-muted">Confiance : {% if image.knn_confidence is not none %}{{ (image.knn_confidence * 100)|round(1) }}%{% else %}N/A{% endif %}</small>
                             </div>
+
+                            {# RF #}
+                            {% if image.rf_prediction == 'full' %}
+                                {% set rf_label = 'Pleine' %}
+                            {% elif image.rf_prediction == 'empty' %}
+                                {% set rf_label = 'Vide' %}
+                            {% else %}
+                                {% set rf_label = 'N/A' %}
+                            {% endif %}
                             <div class="col-4">
-                                <span class="badge bg-success"><i class="fas fa-tree me-1"></i>RF<br>{{ image.rf_prediction|title if image.rf_prediction else 'N/A' }}</span><br>
+                                <span class="badge bg-success"><i class="fas fa-tree me-1"></i>RF<br>{{ rf_label }}</span><br>
                                 <small class="text-muted">Confiance : {% if image.rf_confidence is not none %}{{ (image.rf_confidence * 100)|round(1) }}%{% else %}N/A{% endif %}</small>
                             </div>
+
+                            {# SVM #}
+                            {% if image.svm_prediction == 'full' %}
+                                {% set svm_label = 'Pleine' %}
+                            {% elif image.svm_prediction == 'empty' %}
+                                {% set svm_label = 'Vide' %}
+                            {% else %}
+                                {% set svm_label = 'N/A' %}
+                            {% endif %}
                             <div class="col-4">
-                                <span class="badge bg-warning text-dark"><i class="fas fa-wave-square me-1"></i>SVM<br>{{ image.svm_prediction|title if image.svm_prediction else 'N/A' }}</span><br>
+                                <span class="badge bg-warning text-dark"><i class="fas fa-wave-square me-1"></i>SVM<br>{{ svm_label }}</span><br>
                                 <small class="text-muted">Confiance : {% if image.svm_confidence is not none %}{{ (image.svm_confidence * 100)|round(1) }}%{% else %}N/A{% endif %}</small>
                             </div>
                         </div>
                         
-                        <!-- Métadonnées techniques -->
+                        <!-- Métadonnées -->
                         <div class="row text-center">
                             <div class="col-4"><small class="text-muted"><i class="fas fa-expand-arrows-alt me-1"></i><br>{{ image.width }}×{{ image.height }}</small></div>
                             <div class="col-4"><small class="text-muted"><i class="fas fa-weight-hanging me-1"></i><br>{% if image.file_size %}{{ (image.file_size / 1024)|round(1) }} KB{% else %}N/A{% endif %}</small></div>
@@ -131,7 +177,7 @@
                                 <a href="#" class="btn btn-sm btn-outline-primary ms-2 ajax-ia-btn" data-image-id="{{ image.id }}" data-url="{{ url_for('main.resimuler_image_ajax', image_id=image.id) }}">
                                     <i class="fas fa-robot me-1"></i>Demander à l'IA
                                 </a>
-                                <!-- Annotation rapide -->
+                                <!-- Annotation -->
                                 {% if image.status == 'pending' %}
                                 <div class="btn-group btn-group-sm annotation-group ms-2" role="group" data-image-id="{{ image.id }}">
                                     <form method="POST" action="{{ url_for('main.validate_prediction_ajax', image_id=image.id) }}" class="ajax-validate-form" data-image-id="{{ image.id }}" style="display:inline;">
@@ -200,7 +246,6 @@
     {% endif %}
 </div>
 
-<!-- Modal annotation -->
 <div class="modal fade" id="annotateModal" tabindex="-1" aria-labelledby="annotateModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
@@ -223,7 +268,7 @@
 </div>
 
 <script>
-// Préparer les données images côté JS
+
 const imagesData = [
     {% for image in images.items %}
     {
@@ -266,7 +311,6 @@ function showAnnotateModal(idx) {
         btns = `<span class="text-muted">Image déjà annotée</span>`;
     }
     document.getElementById('modalAnnotationBtns').innerHTML = btns;
-    // Navigation
     document.getElementById('modalPrevBtn').style.visibility = (idx > 0) ? 'visible' : 'hidden';
     document.getElementById('modalNextBtn').style.visibility = (idx < imagesData.length-1) ? 'visible' : 'hidden';
     var modal = new bootstrap.Modal(document.getElementById('annotateModal'));
@@ -319,15 +363,12 @@ document.querySelectorAll('.ajax-validate-form').forEach(form => {
         .then(resp => resp.json())
         .then(data => {
             if(data.success) {
-                // Mettre à jour le badge statut
                 const card = document.getElementById('image-card-' + imageId);
                 const badgeDiv = card.querySelector('.status-badge');
                 if (badgeDiv) badgeDiv.innerHTML = data.badge_html;
-                // Mettre à jour l'indicateur IA
                 const iaStatus = card.querySelector('.card-footer .text-success, .card-footer .text-danger');
                 if(iaStatus) iaStatus.outerHTML = data.ia_status_html;
                 else {
-                    // Si pas encore présent, l'ajouter
                     const footer = card.querySelector('.card-footer .d-flex');
                     if(footer) footer.insertAdjacentHTML('beforeend', data.ia_status_html);
                 }
@@ -347,17 +388,14 @@ document.querySelectorAll('.ajax-ia-btn').forEach(btn => {
         .then(resp => resp.json())
         .then(data => {
             if(data.success) {
-                // Mettre à jour le badge statut
                 const card = document.getElementById('image-card-' + imageId);
                 const badgeDiv = card.querySelector('.status-badge');
                 if (badgeDiv) badgeDiv.innerHTML = data.badge_html;
-                // Mettre à jour les prédictions IA/ML
                 card.querySelector('.badge.bg-info').innerHTML = `<i class='fas fa-cogs me-1'></i>Règles<br>${data.ai_prediction ? data.ai_prediction.charAt(0).toUpperCase() + data.ai_prediction.slice(1) : 'N/A'}`;
                 card.querySelector('.badge.bg-info + br + small').innerHTML = `Confiance : ${data.ai_confidence !== null ? (data.ai_confidence * 100).toFixed(1) + '%' : 'N/A'}`;
                 card.querySelector('.badge.bg-primary').innerHTML = `<i class='fas fa-user-friends me-1'></i>KNN<br>${data.knn_prediction ? data.knn_prediction.charAt(0).toUpperCase() + data.knn_prediction.slice(1) : 'N/A'}`;
                 card.querySelector('.badge.bg-success').innerHTML = `<i class='fas fa-tree me-1'></i>RF<br>${data.rf_prediction ? data.rf_prediction.charAt(0).toUpperCase() + data.rf_prediction.slice(1) : 'N/A'}`;
                 card.querySelector('.badge.bg-warning').innerHTML = `<i class='fas fa-wave-square me-1'></i>SVM<br>${data.svm_prediction ? data.svm_prediction.charAt(0).toUpperCase() + data.svm_prediction.slice(1) : 'N/A'}`;
-                // Mettre à jour le vote ML
                 const mlVoteDiv = card.querySelector('.row.mb-2 .col-12 span');
                 if(data.ml_vote === 'full') {
                     mlVoteDiv.className = 'badge bg-danger fs-5 px-4 py-2';

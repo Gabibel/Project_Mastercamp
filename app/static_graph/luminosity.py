@@ -25,14 +25,18 @@ def static_graph_luminosity():
 @graph_bp.route('/status')
 def static_graph_status():
     images = TrashImage.query.all()
-    status_labels = ['pleine', 'vide', 'en attente']
+    status_labels = ['pleine', 'vide']
     status_counts = [
         sum(1 for img in images if img.ml_vote == 'full'),
         sum(1 for img in images if img.ml_vote == 'empty'),
-        sum(1 for img in images if img.ml_vote not in ['full', 'empty'])
     ]
     plt.figure(figsize=(5,5))
-    plt.pie(status_counts, labels=status_labels, autopct='%1.1f%%', colors=['#e74c3c','#2ecc71','#f1c40f'])
+    plt.pie(
+        status_counts,
+        labels=status_labels,
+        autopct='%1.1f%%',
+        colors=['#e74c3c', '#2ecc71']
+    )
     plt.title('Répartition des statuts (vote ML)')
     buf = BytesIO()
     plt.savefig(buf, format='png')

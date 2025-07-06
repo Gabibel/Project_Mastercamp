@@ -12,6 +12,7 @@ from app.utils import async_analyze_and_update
 main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/')
+# Chemins de base
 def index():
     total_images   = TrashImage.query.count()
     full_images    = TrashImage.query.filter_by(status='full').count()
@@ -37,6 +38,7 @@ from PIL import Image
 import threading
 
 @main_bp.route('/upload', methods=['GET', 'POST'])
+# Page des upload
 def upload():
     if request.method == 'POST':
         if 'file' not in request.files:
@@ -95,14 +97,14 @@ def upload():
                     img.save(filepath, format="JPEG", quality=80, optimize=True)
             except Exception as e:
                 print(f"Erreur compression image : {e}")
-            # Conversion de la date/heure
+            # Conversion de la date
             try:
                 photo_datetime = datetime.strptime(photo_datetime_str, '%Y-%m-%dT%H:%M')
                 photo_datetime = photo_datetime.replace(tzinfo=timezone.utc)
             except Exception as e:
                 print(f"Erreur parsing date/heure : {e}")
                 photo_datetime = datetime.now(timezone.utc)
-            # Création entrée TrashImage (status pending, sans features)
+            # Création entrée TrashImage 
             trash_image = TrashImage(
                 filename=filename,
                 original_filename=file.filename,
@@ -125,6 +127,7 @@ def upload():
     return render_template('upload.html')
 
 @main_bp.route('/gallery')
+# page de la galerie des images
 def gallery():
     status = request.args.get('status','all')
     page   = request.args.get('page', 1, type=int)
@@ -143,6 +146,7 @@ def gallery():
     )
 
 @main_bp.route('/validate/<int:image_id>', methods=['POST'])
+# utiliser pour valider manuellement les données
 def validate_prediction(image_id):
     img = TrashImage.query.get_or_404(image_id)
     user_status = request.form.get('status')
@@ -156,9 +160,9 @@ def validate_prediction(image_id):
         db.session.commit()
 
         if img.ml_correct:
-            flash(f'✅ Vote ML correct ! ({img.ml_vote})')
+            flash(f' Vote ML correct ! ({img.ml_vote})')
         else:
-            flash(f'❌ Vote ML incorrect. Vote : {img.ml_vote}, Réel : {user_status}')
+            flash(f'Vote ML incorrect. Vote : {img.ml_vote}, Réel : {user_status}')
 
     else:
         flash('Statut invalide')
@@ -166,6 +170,7 @@ def validate_prediction(image_id):
     return redirect(url_for('main.gallery'))
 
 @main_bp.route('/delete/<int:image_id>', methods=['POST'])
+# lorsqu'on delete
 def delete_image(image_id):
     img = TrashImage.query.get_or_404(image_id)
     upload_folder = os.path.join(current_app.root_path, current_app.config['UPLOAD_FOLDER'])
@@ -180,6 +185,7 @@ def delete_image(image_id):
 from flask import send_from_directory
 
 @main_bp.route('/uploads/<path:filename>')
+# on upload l'image
 def uploaded_file(filename):
     upload_folder = os.path.join(current_app.root_path, current_app.config['UPLOAD_FOLDER'])
     print(upload_folder)
@@ -226,7 +232,7 @@ def resimuler_image_ajax(image_id):
     # IA par règles
     rule_pred, rule_conf = predict_with_advanced_ai(analysis)
 
-    # Extraction des features pour ML
+    # Extraction des features ML
     feats = [
         analysis['brightness'],
         analysis['contrast'],
@@ -282,7 +288,7 @@ def resimuler_image_ajax(image_id):
     votes = [p for p in (knn_pred, rf_pred, svm_pred) if p in ('full','empty')]
     ml_vote = max(set(votes), key=votes.count) if votes else None
 
-    # Mise à jour de l'objet
+    # Mise à jour de l'objet dans la bdd
     for k, v in analysis.items():
         setattr(img, k, v)
     img.ai_prediction   = rule_pred
@@ -337,7 +343,6 @@ def validate_prediction_ajax(image_id):
         image.ai_correct = (image.ai_prediction == user_status)
         image.ml_correct = (image.ml_vote == user_status)
         db.session.commit()
-        # Préparer la réponse JSON pour mise à jour dynamique
         badge = ''
         if user_status == 'full':
             badge = '<span class="badge bg-danger"><i class="fas fa-exclamation-triangle me-1"></i>Pleine</span>'
@@ -458,22 +463,30 @@ import numpy as np
 
 @main_bp.route('/audit')
 def audit():
+    # on prend les différentes images et pour chaque, on prend les informations pour ensuite l'envoyer au html
     images = TrashImage.query.order_by(TrashImage.upload_date.desc()).all()
     audit_results = []
     for img in images:
         anomalies = []
-        filepath = os.path.join(current_app.root_path, current_app.config['UPLOAD_FOLDER'], img.filename)
+        filepath = os.path.join(current_app.root_path,
+                                current_app.config['UPLOAD_FOLDER'],
+                                img.filename)
         if not os.path.exists(filepath):
             anomalies.append("Fichier manquant")
+        if img.ai_prediction == 'unknown':
+            anomalies.append("Image non conforme aux règles")
         audit_results.append({"image": img, "anomalies": anomalies})
 
     stats = {}
-    features = ["brightness", "contrast", "color_variance", "edge_density", "texture_complexity", "dark_pixel_ratio", "color_entropy"]
+    features = ["brightness", "contrast", "color_variance",
+                "edge_density", "texture_complexity",
+                "dark_pixel_ratio", "color_entropy"]
     for classe in ["full", "empty"]:
         classe_imgs = [i for i in images if i.status == classe]
         stats[classe] = {}
         for feat in features:
-            vals = [getattr(i, feat) for i in classe_imgs if getattr(i, feat) is not None]
+            vals = [getattr(i, feat) for i in classe_imgs
+                    if getattr(i, feat) is not None]
             stats[classe][feat] = {
                 "mean": float(np.mean(vals)) if vals else None,
                 "std":  float(np.std(vals))  if vals else None,
@@ -481,5 +494,5 @@ def audit():
             }
 
     return render_template('audit.html',
-                            audit_results=audit_results,
-                            feature_stats=stats)
+                           audit_results=audit_results,
+                           feature_stats=stats)

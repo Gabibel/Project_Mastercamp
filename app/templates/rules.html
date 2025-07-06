@@ -6,10 +6,23 @@
 <div class="container py-5">
     <h2 class="mb-4"><i class="fas fa-cogs me-2"></i>Règles de classification</h2>
     <form method="POST">
+        {% set THRESHOLD_LABELS = {
+        'brightness_full_max':       'Luminosité max (pleine)',
+        'contrast_full_max':         'Contraste max (pleine)',
+        'color_variance_full_max':   'Variance couleur max (pleine)',
+        'edge_density_full_max':     'Densité de contours max (pleine)',
+        'dark_pixel_ratio_full_min': 'Ratio pixels sombres min (pleine)',
+        'brightness_empty_min':      'Luminosité min (vide)',
+        'contrast_empty_min':        'Contraste min (vide)',
+        'color_variance_empty_min':  'Variance couleur min (vide)',
+        'edge_density_empty_min':    'Densité de contours min (vide)',
+        'dark_pixel_ratio_empty_max':'Ratio pixels sombres max (vide)'
+        } %}
+
         <div class="row g-3">
             {% for key, value in thresholds.items() %}
             <div class="col-md-6">
-                <label class="form-label" for="{{ key }}">{{ key.replace('_', ' ').capitalize() }}</label>
+                <label class="form-label" for="{{ key }}">{{ THRESHOLD_LABELS[key] }}</label>
                 <input type="number" step="any"
                        class="form-control"
                        id="{{ key }}"
