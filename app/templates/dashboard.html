@@ -312,11 +312,19 @@
                         </div>
                     </div>
                     <div id="trashMap" style="height: 400px;"></div>
+                    <div id="clusterLegend" class="mt-3" style="font-size: 0.9rem;">
+                        <strong>Légende des statuts :</strong><br>
+                        <span style="display:inline-block;width:20px;height:20px;background:green;margin-right:5px;border-radius:50%;"></span> Vide<br>
+                        <span style="display:inline-block;width:20px;height:20px;background:red;margin-right:5px;border-radius:50%;"></span> Pleine<br>
+                        <span style="display:inline-block;width:20px;height:20px;background:orange;margin-right:5px;border-radius:50%;"></span> En attente<br>
+                    </div>
+
                 </div>
             </div>
         </div>
     </div>
-</div>
+    
+    
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -394,6 +402,61 @@ function initAICharts() {
         }
     });
 }
+let clusterLayers = [];
+
+function clearClusters() {
+    clusterLayers.forEach(layer => map.removeLayer(layer));
+    clusterLayers = [];
+}
+
+const clusterColors = ['#8e44ad', '#2980b9', '#e67e22', '#1abc9c', '#f39c12', '#d35400', '#7f8c8d', '#9b59b6'];
+
+function fetchAndShowClusters(dateFilter=null, statusFilter='full') {
+    clearClusters();
+    if (statusFilter !== 'full') {
+    const legendContainer = document.getElementById('clusterLegend');
+    legendContainer.innerHTML = `
+        <strong>Légende des statuts :</strong><br>
+        <span style="display:inline-block;width:20px;height:20px;background:green;margin-right:5px;border-radius:50%;"></span> Vide<br>
+        <span style="display:inline-block;width:20px;height:20px;background:red;margin-right:5px;border-radius:50%;"></span> Pleine<br>
+        <span style="display:inline-block;width:20px;height:20px;background:orange;margin-right:5px;border-radius:50%;"></span> En attente<br>
+    `;
+    return;
+}
+    let url = `/api/clusters?status=${statusFilter}`;
+    if (dateFilter) url += `&date=${dateFilter}`;
+    
+    fetch(url)
+    .then(resp => resp.json())
+    .then(clusters => {
+        const legendContainer = document.getElementById('clusterLegend');
+        legendContainer.innerHTML = `
+    <strong>Légende des statuts :</strong><br>
+    <span style="display:inline-block;width:20px;height:20px;background:green;margin-right:5px;border-radius:50%;"></span> Vide<br>
+    <span style="display:inline-block;width:20px;height:20px;background:red;margin-right:5px;border-radius:50%;"></span> Pleine<br>
+    <span style="display:inline-block;width:20px;height:20px;background:orange;margin-right:5px;border-radius:50%;"></span> En attente<br>
+    <br>
+    <strong>Clusters :</strong><br>
+`; 
+        
+        clusters.forEach((cluster, idx) => {
+            const color = clusterColors[idx % clusterColors.length];
+            
+            const circle = L.circle([cluster.lat, cluster.lon], {
+                color: color,
+                fillColor: color,
+                fillOpacity: 0.2,
+                radius: 300
+            }).addTo(map).bindPopup(`Zone à forte concentration : ${cluster.count} poubelles pleines`);
+            clusterLayers.push(circle);
+            
+            const legendItem = document.createElement('div');
+            legendItem.innerHTML = `<span style="display:inline-block;width:20px;height:20px;background:${color};margin-right:5px;"></span> Cluster ${idx+1}`;
+            legendContainer.appendChild(legendItem);
+        });
+    });
+}
+
 
 function updateCharts(data) {
     // Statuts
@@ -467,9 +530,14 @@ let markersLayer = L.layerGroup().addTo(map);
 function updateMapMarkers(images) {
     markersLayer.clearLayers();
     images.forEach(img => {
-        const color = img.status === 'full'
-            ? 'red'
-            : (img.status === 'empty' ? 'green' : 'orange');
+        let color = 'orange'; // default
+        if (img.status === 'full') color = 'red';
+        if (img.status === 'empty') color = 'green';
+        if (img.cluster_id !== undefined && img.cluster_id !== null) {
+            const clusterColors = ['#8e44ad', '#2980b9', '#e67e22', '#1abc9c', '#f39c12', '#d35400', '#7f8c8d', '#9b59b6'];
+            color = clusterColors[img.cluster_id % clusterColors.length];
+        }
+
         const marker = L.circleMarker([img.latitude, img.longitude], {
             color: color,
             radius: 10,
@@ -495,13 +563,18 @@ function fetchMapData(dateFilter=null, statusFilter='all') {
         });
 }
 
+
+
 document.addEventListener('DOMContentLoaded', () => {
     fetchMapData();
+    fetchAndShowClusters();
     document.getElementById('mapDateFilter').addEventListener('change', function() {
         fetchMapData(this.value, document.getElementById('mapStatusFilter').value);
+        fetchAndShowClusters(this.value, document.getElementById('mapStatusFilter').value);
     });
     document.getElementById('mapStatusFilter').addEventListener('change', function() {
         fetchMapData(document.getElementById('mapDateFilter').value, this.value);
+        fetchAndShowClusters(document.getElementById('mapDateFilter').value, this.value);
     });
 });
 </script>
