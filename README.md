@@ -43,15 +43,16 @@ SmartTrash Monitor est une plateforme web intelligente de suivi de l'état des p
 
 ## 🛠️ Technologies Utilisées
 
-- **Backend** : Python, Flask, SQLAlchemy, SQLite, Pillow, OpenCV, NumPy, Matplotlib,uçnznezz_yerqz_e_quezq_
+- **Backend** : Python, Flask, SQLAlchemy, SQLite, Pillow, OpenCV, NumPy, Matplotlib
 - **Frontend** : HTML/CSS, Bootstrap, JavaScript, Chart.js, Leaflet.js
+- **Machine Learning** : scikit-learn (modèles KNN, Random Forest, SVM, fichiers .pkl)
 
 ## 📦 Installation
 
 1. Cloner le projet
 2. Créer un environnement virtuel et installer les dépendances (`pip install -r requirements.txt`)
-3. Créer les dossiers nécessaires (`uploads`, `training_data/with_label/clean`, etc.)
-4. Lancer l'application (`python app.py`)
+3. Créer les dossiers nécessaires (`app/uploads`, `app/training_data/with_label/clean`, `app/training_data/with_label/dirty`, etc.)
+4. Lancer l'application (`python run.py`)
 5. Accéder à http://localhost:5000
 
 ## 🎮 Utilisation
@@ -64,13 +65,20 @@ SmartTrash Monitor est une plateforme web intelligente de suivi de l'état des p
 
 ## 🏗️ Architecture
 
-- `app.py` : Application principale Flask
+- `run.py` : Point d'entrée principal de l'application Flask
+- `app/` : Dossier principal de l'application
+  - `routes/` : Fichiers de routes Flask (API, dashboard, etc.)
+  - `models.py` : Modèles de données SQLAlchemy
+  - `analysis.py` : Extraction de caractéristiques et logique d'analyse
+  - `static_graph/` : Génération de graphiques statiques
+  - `templates/` : Templates HTML (Bootstrap)
+  - `uploads/` : Images uploadées par les utilisateurs
+  - `training_data/with_label/clean|dirty` : Données d'entraînement annotées
+  - `utils.py` : Fonctions utilitaires
 - `requirements.txt` : Dépendances Python
-- `rules_config.json` : Seuils de classification
-- `instance/trash_monitoring.db` : Base SQLite
-- `uploads/` : Images uploadées
-- `training_data/with_label/clean|dirty` : Données d'entraînement
-- `templates/` : Templates HTML (Bootstrap)
+- `rules_config.json` : Seuils de classification (modifiables via l'interface)
+- `instance/trash_monitoring.db` : Base SQLite (créée automatiquement)
+- `knn_model.pkl`, `rf_model.pkl`, `svm_model.pkl`, `scaler_ml.pkl` : Modèles ML et scaler sauvegardés
 
 ## 🔧 Configuration
 
@@ -89,6 +97,7 @@ SmartTrash Monitor est une plateforme web intelligente de suivi de l'état des p
 - Application de règles pondérées (configurables)
 - Prédiction automatique (pleine/vide/unknown) avec score de confiance
 - Annotation manuelle pour validation/correction
+- Modèles ML chargés depuis les fichiers `.pkl` (KNN, RF, SVM)
 
 ## 🔍 Audit et Qualité des Données
 
@@ -121,7 +130,7 @@ SmartTrash Monitor est une plateforme web intelligente de suivi de l'état des p
 
 ## 📚 Dépendances
 
-Voir `requirements.txt` pour le backend. Frontend : Bootstrap, Chart.js, Leaflet.
+Voir `requirements.txt` pour le backend. Frontend : Bootstrap, Chart.js, Leaflet.js.
 
 ## 🌱 Démarche Green IT & Évaluation des Risques
 
