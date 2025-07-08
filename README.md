@@ -130,32 +130,8 @@ Voir `requirements.txt` pour le backend. Frontend : Bootstrap, Chart.js, Leaflet
   - Risques techniques (perte de données, surcharge serveur, sécurité upload)
   - Risques d'usage (mauvaise annotation, données incomplètes)
   - Limites écologiques (stockage, transport de données)
-- **À faire** : Ajouter un questionnaire d'écoconception et une section dédiée dans la documentation.
-
-## 📄 Documentation technique & Démo
-
-- **Documentation** :
-  - Structure du projet
-  - Fonctionnement de l'extraction de caractéristiques
-  - Logique des règles de classification
-  - Captures d'écran des principales fonctionnalités
-  - Évaluation des risques et démarche Green IT
-- **Démo** :
-  - Scénario utilisateur : upload → annotation → dashboard → audit → configuration
-  - Script de présentation pour la soutenance
-
+  - 
 ## 👥 Auteurs
 
 - Jérôme BALTHAZAR - Julien BLANCHARD - Jacky SHANG - Henri SU - Gabriel TANNOUS - Angela TCHING
 - Projet Mastercamp Data 2024
-
----
-
-## 🏆 Axes d'Amélioration Restants
-
-- Gestion multilingue (français/anglais)
-- Explicabilité avancée des décisions IA/ML
-- Filtres avancés supplémentaires
-- Section Green IT et évaluation des risques enrichie
-- Documentation technique et script de démo détaillés
-- (Bonus) Intégration de données contextuelles externes
