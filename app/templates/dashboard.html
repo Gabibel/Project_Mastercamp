@@ -308,6 +308,7 @@
                                 <option value="full">Pleine</option>
                                 <option value="empty">Vide</option>
                                 <option value="pending">En attente</option>
+                                <option value="problem">Zone problématique</option>
                             </select>
                         </div>
                     </div>
@@ -405,11 +406,11 @@ function clearClusters() {
     clusterLayers = [];
 }
 
-const clusterColors = ['#8e44ad', '#2980b9', '#e67e22', '#1abc9c', '#f39c12', '#d35400', '#7f8c8d', '#9b59b6'];
+const clusterColors = ['#8e44ad', '#2980b9', '#e91e63', '#1abc9c', '#34495e', '#2c3e50', '#7f8c8d', '#9b59b6'];
 
 function fetchAndShowClusters(dateFilter=null, statusFilter='full') {
     clearClusters();
-    if (statusFilter !== 'full') {
+    if (statusFilter !== 'problem') {
     const legendContainer = document.getElementById('clusterLegend');
     legendContainer.innerHTML = `
         <strong>Légende des statuts :</strong><br>
@@ -438,13 +439,13 @@ function fetchAndShowClusters(dateFilter=null, statusFilter='full') {
         clusters.forEach((cluster, idx) => {
             const color = clusterColors[idx % clusterColors.length];
             
-            const circle = L.circle([cluster.lat, cluster.lon], {
+            /*const circle = L.circle([cluster.lat, cluster.lon], {
                 color: color,
                 fillColor: color,
                 fillOpacity: 0.2,
                 radius: 300
             }).addTo(map).bindPopup(`Zone à forte concentration : ${cluster.count} poubelles pleines`);
-            clusterLayers.push(circle);
+            clusterLayers.push(circle);*/
             
             const legendItem = document.createElement('div');
             legendItem.innerHTML = `<span style="display:inline-block;width:20px;height:20px;background:${color};margin-right:5px;"></span> Cluster ${idx+1}`;
@@ -520,13 +521,17 @@ let markersLayer = L.layerGroup().addTo(map);
 function updateMapMarkers(images) {
     markersLayer.clearLayers();
     images.forEach(img => {
-        let color = 'orange'; // default
+        let color = 'orange'; 
         if (img.status === 'full') color = 'red';
-        if (img.status === 'empty') color = 'green';
-        if (img.cluster_id !== undefined && img.cluster_id !== null) {
-            const clusterColors = ['#8e44ad', '#2980b9', '#e67e22', '#1abc9c', '#f39c12', '#d35400', '#7f8c8d', '#9b59b6'];
+        else if (img.status === 'empty') color = 'green';
+        else color = 'orange';
+
+        const currentStatus = document.getElementById('mapStatusFilter').value;
+        if (currentStatus === 'problem' && img.cluster_id !== undefined && img.cluster_id !== null) {
+            const clusterColors = ['#8e44ad', '#2980b9', '#e91e63', '#1abc9c', '#34495e', '#2c3e50', '#7f8c8d', '#9b59b6'];
             color = clusterColors[img.cluster_id % clusterColors.length];
         }
+
 
         const marker = L.circleMarker([img.latitude, img.longitude], {
             color: color,
@@ -548,7 +553,13 @@ function fetchMapData(dateFilter=null, statusFilter='all') {
         .then(data => {
             let filtered = data;
             if (dateFilter)   filtered = filtered.filter(img => img.upload_date.startsWith(dateFilter));
-            if (statusFilter && statusFilter !== 'all') filtered = filtered.filter(img => img.status === statusFilter);
+            if (statusFilter && statusFilter !== 'all') {
+                if (statusFilter === 'problem') {
+                    filtered = filtered.filter(img => img.status === 'full');
+                } else {
+                    filtered = filtered.filter(img => img.status === statusFilter);
+                    }
+            }
             updateMapMarkers(filtered);
         });
 }
